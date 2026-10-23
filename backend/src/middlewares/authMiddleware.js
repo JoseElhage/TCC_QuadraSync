@@ -46,6 +46,29 @@ const autenticarToken = (req, res, next) => {
   }
 };
 
+const autorizarPerfis = (...perfis) => {
+  return (req, res, next) => {
+    if (!req.usuario) {
+      console.error('autorizarPerfis usado sem autenticarToken antes');
+
+      return res.status(500).json({
+        success: false,
+        message: 'Erro de configuração: autenticação não executada antes da autorização'
+      });
+    }
+
+    if (!perfis.includes(req.usuario.perfil)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Acesso negado: perfil sem permissão para esta ação'
+      });
+    }
+
+    next();
+  };
+};
+
 module.exports = {
-  autenticarToken
+  autenticarToken,
+  autorizarPerfis
 };
