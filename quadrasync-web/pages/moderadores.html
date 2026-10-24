@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Moderadores · QuadraSync Admin</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%231565C0'/%3E%3Ccircle cx='12' cy='12' r='6.2' fill='none' stroke='white' stroke-width='1.6'/%3E%3Cpath d='M12 5.8v12.4M5.8 12h12.4' stroke='white' stroke-width='1.6'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+<div class="shell">
+  <div id="sidebarHost"></div>
+  <div class="main">
+    <div id="topbarHost"></div>
+
+    <main class="page">
+      <div class="page-head page-head-row">
+        <div>
+          <h2>Moderadores da Etec League</h2>
+          <p>Alunos moderadores registram o placar final dos jogos e organizam o chaveamento do torneio interno. Promova ou remova o acesso quando necessário.</p>
+        </div>
+        <div class="flex gap-8 wrap">
+          <button class="btn btn-primary btn-sm" id="btnPromover"></button>
+        </div>
+      </div>
+
+      <section class="stats" style="grid-template-columns:repeat(3,1fr)" id="stats"></section>
+
+      <!-- Equipe atual -->
+      <div class="card mt-20 fade-up d1">
+        <div class="card-head">
+          <div class="flex gap-10">
+            <h2>Equipe de moderação</h2>
+            <span class="badge badge-purple" id="modBadge"></span>
+          </div>
+          <span class="small muted">Permissões aplicadas no torneio interno</span>
+        </div>
+        <div class="table-wrap">
+          <table class="tbl">
+            <thead><tr>
+              <th>Aluno moderador</th><th>Permissão</th><th>Moderador desde</th><th>Jogos</th><th class="right">Ações</th>
+            </tr></thead>
+            <tbody id="tbodyMods"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="grid-2-eq mt-20">
+        <!-- Alunos elegíveis -->
+        <div class="card fade-up d2">
+          <div class="card-head">
+            <h2>Promover um aluno</h2>
+            <span class="badge badge-outline" id="alunosBadge"></span>
+          </div>
+          <div class="card-body" style="padding:14px 16px 0">
+            <div class="flex gap-8 wrap">
+              <div class="grow" style="min-width:180px">
+                <div class="input-icon" id="sw"><span data-icon="search"></span>
+                  <input class="input" id="qAluno" type="search" placeholder="Buscar aluno…">
+                </div>
+              </div>
+              <select class="select" id="fTurma" style="max-width:170px"><option value="">Todas as turmas</option></select>
+            </div>
+          </div>
+          <div id="listaAlunos" style="padding:8px 0 6px"></div>
+        </div>
+
+        <!-- Histórico -->
+        <div class="card fade-up d3">
+          <div class="card-head"><h2>Histórico de moderação</h2></div>
+          <div id="hist"></div>
+          <div class="card-foot">
+            <p class="small muted">A remoção de um moderador não apaga os placares já registrados no torneio.</p>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<div id="toasts"></div>
+
+<script src="../js/data.js"></script>
+<script src="../js/shell.js"></script>
+<script src="../js/actions.js"></script>
+<script>
+const user = mountShell('moderadores', {title:'Moderadores', subtitle:'Promoção e remoção de alunos moderadores'});
+if(!user) throw new Error('sem sessão');
+
+document.getElementById('btnPromover').innerHTML = icon('plus','i sm') + ' Promover aluno';
+document.querySelectorAll('[data-icon]').forEach(el=>{ el.outerHTML = icon(el.dataset.icon,'i'); });
+
+const ROLE_BADGE = {completo:'badge-purple', placar:'badge-info', chave:'badge-cyan'};
+const elegiveis = () => {
+  const nomes = new Set(DB.mods.get().map(m=>m.nome));
+  return DB.students.get().filter(s=>!nomes.has(s.nome));
+};
+
+/* ---------- Turmas no filtro ---------- */
+function fillTurmas(){
+  const sel = document.getElementById('fTurma');
+  sel.innerHTML = '<option value="">Todas as turmas</option>' + TURMAS.map(t=>`<option>${t}</option>`).join('');
+}
+
+/* ---------- Render ---------- */
+function render(){
+  const mods = DB.mods.get();
+
+  /* stats */
+  const dias30 = addDays(TODAY_ISO,-30);
+  const stats = [
+    {v:mods.length, l:'Moderadores ativos', ico:'shield', tone:'ico-purple', t:'equipe da temporada'},
+    {v:mods.reduce((a,m)=>a+(m.jogos||0),0), l:'Jogos com placar registrado', ico:'trophy', tone:'ico-amber', t:'Etec League 2026'},
+    {v:DB.log.get().filter(l=>l.tipo==='promocao' && l.at >= new Date(dias30+'T00:00:00').toISOString()).length, l:'Promoções nos últimos 30 dias', ico:'star', tone:'ico-green', t:'movimentação recente'}
+  ];
+  document.getElementById('stats').innerHTML = stats.map((c,i)=>`
+    <div class="stat fade-up d${i+1}">
+      <div class="ico ${c.tone}">${icon(c.ico,'i lg')}</div>
+      <div class="v mono">${c.v}</div><div class="l">${c.l}</div>
+      <span class="trend badge badge-outline">${c.t}</span>
+    </div>`).join('');
+
+  /* tabela */
+  document.getElementById('modBadge').innerHTML = `<span class="dot"></span>${mods.length} ${mods.length===1?'ativo':'ativos'}`;
+  document.getElementById('tbodyMods').innerHTML = mods.length ? mods.map(m=>`
+    <tr>
+      <td><div class="cell-user">
+        <span class="avatar sm ${tone(m.nome)}">${esc(initials(m.nome))}</span>
+        <div><div class="n">${esc(m.nome)}</div><div class="s">${esc(m.turma)}</div></div>
+      </div></td>
+      <td><span class="badge ${ROLE_BADGE[m.papel]||'badge-info'}">${icon('shield','i sm')} ${MOD_ROLE_LABEL[m.papel]||m.papel}</span></td>
+      <td class="muted">${fmtDateLong(m.desde)}<div class="tiny muted">há ${Math.max(1,Math.round((Date.now()-new Date(m.desde+'T12:00:00').getTime())/86400000))} dias</div></td>
+      <td><strong class="mono">${m.jogos||0}</strong> <span class="muted small">jogos</span></td>
+      <td class="right">
+        <div class="flex gap-6" style="justify-content:flex-end">
+          <button class="btn btn-outline btn-sm" data-edit="${m.id}">${icon('edit','i sm')} Permissão</button>
+          <button class="btn btn-danger-outline btn-sm" data-demote="${m.id}">${icon('x','i sm')} Remover</button>
+        </div>
+      </td>
+    </tr>`).join('')
+    : `<tr><td colspan="5"><div class="empty"><div class="ico">${icon('shield')}</div>
+        <h3>Nenhum moderador ativo</h3><p>Promova um aluno para cuidar do placar e do chaveamento da Etec League.</p>
+        <button class="btn btn-primary btn-sm mt-16" id="emptyPromover">Promover primeiro moderador</button></div></td></tr>`;
+
+  document.getElementById('emptyPromover')?.addEventListener('click', ()=>openPromote());
+
+  document.querySelectorAll('[data-edit]').forEach(b=>b.addEventListener('click', ()=>openEditPapel(b.dataset.edit)));
+  document.querySelectorAll('[data-demote]').forEach(b=>b.addEventListener('click', ()=>openDemote(b.dataset.demote)));
+
+  /* alunos elegíveis */
+  const termo = document.getElementById('qAluno').value.trim().toLowerCase();
+  const turma = document.getElementById('fTurma').value;
+  let alunos = elegiveis();
+  if(termo) alunos = alunos.filter(a=>(a.nome+' '+a.turma).toLowerCase().includes(termo));
+  if(turma) alunos = alunos.filter(a=>a.turma===turma);
+  document.getElementById('alunosBadge').textContent = `${elegiveis().length} elegíveis`;
+
+  document.getElementById('listaAlunos').innerHTML = alunos.length ? alunos.slice(0,8).map(a=>`
+    <div class="mini-item">
+      <span class="avatar sm ${tone(a.nome)}">${esc(initials(a.nome))}</span>
+      <div class="grow" style="min-width:0">
+        <div class="t">${esc(a.nome)}</div>
+        <div class="s">${icon('school','i sm')} ${esc(a.turma)}</div>
+      </div>
+      <button class="btn btn-soft btn-sm" data-promote="${esc(a.nome)}" data-turma="${esc(a.turma)}">${icon('shield','i sm')} Promover</button>
+    </div>`).join('')
+    : `<div class="empty" style="padding:32px 20px"><div class="ico">${icon('users')}</div>
+        <h3>Nenhum aluno encontrado</h3><p>Todos os alunos filtrados já são moderadores ou não correspondem à busca.</p></div>`;
+
+  document.querySelectorAll('[data-promote]').forEach(b=>b.addEventListener('click', ()=>openPromote(b.dataset.promote, b.dataset.turma)));
+
+  /* histórico */
+  const hist = DB.log.get().filter(l=>['promocao','remocao'].includes(l.tipo));
+  document.getElementById('hist').innerHTML = hist.length ? hist.map(l=>`
+    <div class="mini-item">
+      <span class="ico ${l.tipo==='promocao'?'ico-purple':'ico-red'}">${icon(l.tipo==='promocao'?'shield':'user','i sm')}</span>
+      <div class="grow"><div class="t" style="font-weight:600">${esc(l.texto)}</div>
+      <div class="s">${icon('clock','i sm')} ${timeAgo(l.at)} · por ${esc(user.nome)}</div></div>
+    </div>`).join('')
+    : `<div class="empty" style="padding:32px 20px"><div class="ico">${icon('chart')}</div><h3>Sem histórico</h3>
+       <p>Promoções e remoções aparecem aqui com data e responsável.</p></div>`;
+}
+
+/* ---------- Modal: promover ---------- */
+function openPromote(nome='', turma=''){
+  const alunos = elegiveis();
+  const opts = alunos.map(a=>`<option value="${esc(a.nome)}" data-turma="${esc(a.turma)}" ${a.nome===nome?'selected':''}>${esc(a.nome)} — ${esc(a.turma)}</option>`).join('');
+  const radios = MOD_ROLES.map((p,i)=>`
+    <label class="radio-card">
+      <input type="radio" name="papel" value="${p.id}" ${i===0?'checked':''}>
+      <span><span class="t">${p.label}</span><span class="d">${p.desc}</span></span>
+    </label>`).join('');
+
+  if(!alunos.length){ toast('info','Sem alunos elegíveis','Todos os alunos cadastrados já são moderadores.'); return; }
+
+  Modal.open({
+    title:'Promover aluno a moderador', subtitle:'O aluno recebe as permissões no app e no painel do torneio',
+    icon:'shield', tone:'ico-purple', size:'wide',
+    body:`<div class="field">
+        <label class="label" for="selAluno">Aluno <span class="req">*</span></label>
+        <select class="select" id="selAluno">${opts}</select>
+      </div>
+      <div class="field">
+        <label class="label">Permissão concedida <span class="req">*</span></label>
+        <div class="col gap-8" id="papeis">${radios}</div>
+      </div>
+      <div class="field mb-0">
+        <label class="label" for="obsProm">Observação <span class="label-hint">(opcional)</span></label>
+        <textarea class="textarea" id="obsProm" placeholder="Ex.: responsável pelo placar das partidas da Chave B."></textarea>
+      </div>
+      <label class="check mt-12"><input type="checkbox" id="notifProm" checked> Notificar o aluno e a equipe de moderação</label>`,
+    footer:`<button class="btn btn-outline" data-close>Cancelar</button>
+            <button class="btn btn-primary" id="doPromote">${icon('shield','i sm')} Promover aluno</button>`,
+    onMount(box, close){
+      bindRadioCards(box);
+      box.querySelector('#doPromote').addEventListener('click', async ev=>{
+        const sel = box.querySelector('#selAluno');
+        const papel = box.querySelector('input[name="papel"]:checked')?.value || 'placar';
+        const aluno = DB.students.get().find(a=>a.nome===sel.value) || {nome:sel.value, turma:sel.selectedOptions[0]?.dataset.turma||''};
+        await busy(ev.currentTarget, 750);
+
+        const mods = DB.mods.get();
+        mods.push({id:uid('md'), nome:aluno.nome, turma:aluno.turma, papel, desde:TODAY_ISO, jogos:0});
+        DB.mods.set(mods);
+        pushNotif('moderador','Aluno promovido a moderador', `${aluno.nome} (${aluno.turma}) recebeu a permissão de ${MOD_ROLE_LABEL[papel]}.`);
+        pushLog('promocao', `${aluno.nome} promovido a moderador (${MOD_ROLE_LABEL[papel]})`);
+        close();
+        toast('success','Moderador promovido', `${aluno.nome} · ${MOD_ROLE_LABEL[papel]}`);
+        render();
+      });
+    }
+  });
+}
+
+/* ---------- Modal: alterar permissão ---------- */
+function openEditPapel(id){
+  const m = DB.mods.get().find(x=>x.id===id); if(!m) return;
+  const radios = MOD_ROLES.map(p=>`
+    <label class="radio-card">
+      <input type="radio" name="papel" value="${p.id}" ${p.id===m.papel?'checked':''}>
+      <span><span class="t">${p.label}</span><span class="d">${p.desc}</span></span>
+    </label>`).join('');
+
+  Modal.open({
+    title:'Alterar permissão', subtitle:`${esc(m.nome)} · ${esc(m.turma)}`, icon:'edit', tone:'ico-blue',
+    body:`<div class="col gap-8">${radios}</div>`,
+    footer:`<button class="btn btn-outline" data-close>Cancelar</button>
+            <button class="btn btn-primary" id="doEdit">Salvar permissão</button>`,
+    onMount(box, close){
+      bindRadioCards(box);
+      box.querySelector('#doEdit').addEventListener('click', async ev=>{
+        const papel = box.querySelector('input[name="papel"]:checked').value;
+        await busy(ev.currentTarget, 600);
+        const mods = DB.mods.get(); const alvo = mods.find(x=>x.id===id); alvo.papel = papel; DB.mods.set(mods);
+        pushLog('promocao', `Permissão de ${alvo.nome} alterada para ${MOD_ROLE_LABEL[papel]}`);
+        close();
+        toast('success','Permissão atualizada', `${alvo.nome} · ${MOD_ROLE_LABEL[papel]}`);
+        render();
+      });
+    }
+  });
+}
+
+/* ---------- Modal: remover ---------- */
+function openDemote(id){
+  const m = DB.mods.get().find(x=>x.id===id); if(!m) return;
+  Modal.open({
+    title:'Remover moderador', subtitle:`${esc(m.nome)} perderá o acesso às funções do torneio`,
+    icon:'alert', tone:'ico-red',
+    body:`<div class="summary">
+        <div class="row"><span>Aluno</span><span>${esc(m.nome)} · ${esc(m.turma)}</span></div>
+        <div class="row"><span>Permissão atual</span><span>${MOD_ROLE_LABEL[m.papel]||m.papel}</span></div>
+        <div class="row"><span>Moderador desde</span><span>${fmtDateLong(m.desde)}</span></div>
+        <div class="row"><span>Jogos registrados</span><span>${m.jogos||0}</span></div>
+      </div>
+      <div class="field mt-16 mb-0">
+        <label class="label" for="motivoDem">Motivo da remoção</label>
+        <select class="select" id="motivoDem">
+          <option>Fim da temporada do torneio</option>
+          <option>Baixa participação</option>
+          <option>Conduta inadequada</option>
+          <option>Pedido do próprio aluno</option>
+          <option>Rotina da secretaria</option>
+        </select>
+      </div>
+      <label class="check mt-12"><input type="checkbox" id="notifDem" checked> Avisar o aluno sobre a remoção</label>`,
+    footer:`<button class="btn btn-outline" data-close>Manter moderador</button>
+            <button class="btn btn-danger" id="doDemote">${icon('x','i sm')} Remover acesso</button>`,
+    onMount(box, close){
+      box.querySelector('#doDemote').addEventListener('click', async ev=>{
+        const motivo = box.querySelector('#motivoDem').value;
+        await busy(ev.currentTarget, 700);
+        DB.mods.set(DB.mods.get().filter(x=>x.id!==id));
+        pushNotif('moderador','Moderador removido', `${m.nome} (${m.turma}) não é mais moderador — ${motivo}.`);
+        pushLog('remocao', `${m.nome} removido da moderação · ${motivo}`);
+        close();
+        toast('warn','Moderador removido', `${m.nome} · ${motivo}`);
+        render();
+      });
+    }
+  });
+}
+
+document.getElementById('btnPromover').addEventListener('click', ()=>openPromote());
+document.getElementById('qAluno').addEventListener('input', render);
+document.getElementById('fTurma').addEventListener('change', render);
+
+fillTurmas();
+render();
+</script>
+</body>
+</html>

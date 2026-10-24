@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reservas · QuadraSync Admin</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%231565C0'/%3E%3Ccircle cx='12' cy='12' r='6.2' fill='none' stroke='white' stroke-width='1.6'/%3E%3Cpath d='M12 5.8v12.4M5.8 12h12.4' stroke='white' stroke-width='1.6'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+<div class="shell">
+  <div id="sidebarHost"></div>
+  <div class="main">
+    <div id="topbarHost"></div>
+
+    <main class="page">
+      <div class="page-head page-head-row">
+        <div>
+          <h2>Aprovação de reservas</h2>
+          <p>Analise os pedidos feitos pelos alunos no aplicativo. A quadra pode ser usada fora do horário de aula, das 18h00 às 21h30.</p>
+        </div>
+        <div class="flex gap-8 wrap">
+          <button class="btn btn-outline btn-sm" id="btnExport"></button>
+          <button class="btn btn-outline btn-sm" id="btnBlock"></button>
+        </div>
+      </div>
+
+      <!-- Filtros -->
+      <div class="card card-pad" style="margin-bottom:18px">
+        <div class="toolbar" style="margin-bottom:14px">
+          <div class="search grow" style="max-width:380px">
+            <div class="input-icon" id="searchWrap">
+              <span data-icon="search"></span>
+              <input class="input" id="q" type="search" placeholder="Buscar por aluno, turma ou finalidade…">
+            </div>
+          </div>
+          <select class="select" id="periodo" style="max-width:210px">
+            <option value="todos">Todos os períodos</option>
+            <option value="hoje">Hoje</option>
+            <option value="semana">Próximos 7 dias</option>
+            <option value="mes">Este mês</option>
+            <option value="passado">Já aconteceram</option>
+          </select>
+          <select class="select" id="esporte" style="max-width:180px">
+            <option value="">Todos os esportes</option>
+          </select>
+          <select class="select" id="ordem" style="max-width:190px">
+            <option value="data">Data mais próxima</option>
+            <option value="recentes">Pedidos mais recentes</option>
+            <option value="aluno">Nome do aluno (A–Z)</option>
+          </select>
+          <div class="grow"></div>
+          <button class="btn btn-success-soft btn-sm hidden" id="btnAprovarTodas" style="margin-left:auto"></button>
+        </div>
+
+        <div class="tabs" id="tabs"></div>
+      </div>
+
+      <!-- Resultado -->
+      <div class="between mb-12">
+        <span class="section-title" id="resumo"></span>
+        <span class="small muted" id="legenda"></span>
+      </div>
+      <div class="res-list" id="lista"></div>
+    </main>
+  </div>
+</div>
+
+<div id="toasts"></div>
+
+<script src="../js/data.js"></script>
+<script src="../js/shell.js"></script>
+<script src="../js/actions.js"></script>
+<script>
+const user = mountShell('reservas', {title:'Reservas', subtitle:'Aprove, recuse ou cancele as solicitações dos alunos'});
+if(!user) throw new Error('sem sessão');
+
+/* ícones e botões */
+function paintIcons(){
+  document.querySelectorAll('[data-icon]').forEach(el=>{
+    const svg = icon(el.dataset.icon,'i');
+    if(el.tagName==='SPAN' && el.closest('.input-icon')) el.outerHTML = svg; else el.innerHTML = svg;
+  });
+}
+paintIcons();
+document.getElementById('btnExport').innerHTML = icon('download','i sm') + ' Exportar lista';
+document.getElementById('btnBlock').innerHTML  = icon('lock','i sm') + ' Bloquear horário';
+document.getElementById('btnAprovarTodas').innerHTML = icon('check','i sm') + ' Aprovar todas as filtradas';
+document.getElementById('btnBlock').addEventListener('click', ()=>openBlockModal({data:TODAY_ISO,hora:SLOTS[0].start}, render));
+document.getElementById('btnExport').addEventListener('click', ()=>toast('info','Exportação simulada','No sistema real, um .csv com as reservas filtradas seria gerado.'));
+
+/* filtros de esporte */
+const selEsp = document.getElementById('esporte');
+Object.entries(SPORTS).forEach(([k,v])=>{ const o=document.createElement('option'); o.value=k; o.textContent=v.label; selEsp.appendChild(o); });
+
+/* abas de status */
+const FILTERS = [
+  {id:'todas',      label:'Todas'},
+  {id:'pendente',   label:'Pendentes'},
+  {id:'confirmada', label:'Confirmadas'},
+  {id:'concluida',  label:'Concluídas'},
+  {id:'recusada',   label:'Recusadas'},
+  {id:'cancelada',  label:'Canceladas'}
+];
+let filtro = 'pendente';
+const tabs = document.getElementById('tabs');
+function renderTabs(){
+  const all = DB.res.get();
+  tabs.innerHTML = FILTERS.map(f=>{
+    const n = f.id==='todas' ? all.length : all.filter(r=>r.status===f.id).length;
+    return `<button class="chip ${filtro===f.id?'active':''}" data-f="${f.id}">${f.label} <span class="count">${n}</span></button>`;
+  }).join('');
+  tabs.querySelectorAll('[data-f]').forEach(b=>b.addEventListener('click',()=>{ filtro=b.dataset.f; render(); }));
+}
+
+/* estado dos filtros */
+const q = document.getElementById('q'), periodo = document.getElementById('periodo'),
+      ordem = document.getElementById('ordem');
+[q,periodo,selEsp,ordem].forEach(el=>el.addEventListener('input', render));
+
+function filtradas(){
+  let list = DB.res.get().slice();
+  if(filtro !== 'todas') list = list.filter(r=>r.status===filtro);
+
+  const termo = q.value.trim().toLowerCase();
+  if(termo) list = list.filter(r => (r.aluno+' '+r.turma+' '+r.motivo+' '+(SPORTS[r.esporte]?.label||'')).toLowerCase().includes(termo));
+
+  if(selEsp.value) list = list.filter(r=>r.esporte===selEsp.value);
+
+  const mesAtual = TODAY_ISO.slice(0,7);
+  if(periodo.value==='hoje')     list = list.filter(r=>r.data===TODAY_ISO);
+  if(periodo.value==='semana')   list = list.filter(r=>r.data>=TODAY_ISO && r.data<=addDays(TODAY_ISO,7));
+  if(periodo.value==='mes')      list = list.filter(r=>r.data.slice(0,7)===mesAtual);
+  if(periodo.value==='passado')  list = list.filter(r=>r.data<TODAY_ISO);
+
+  if(ordem.value==='data')      list.sort((a,b)=>a.data.localeCompare(b.data)||a.hora.localeCompare(b.hora));
+  if(ordem.value==='recentes')  list.sort((a,b)=>(b.criadoEm||'').localeCompare(a.criadoEm||''));
+  if(ordem.value==='aluno')     list.sort((a,b)=>a.aluno.localeCompare(b.aluno,'pt-BR'));
+  return list;
+}
+
+function render(){
+  renderTabs();
+  const list = filtradas();
+  const host = document.getElementById('lista');
+
+  document.getElementById('resumo').textContent =
+    `${list.length} ${list.length===1?'solicitação':'solicitações'} · ${FILTERS.find(f=>f.id===filtro).label.toLowerCase()}`;
+  document.getElementById('legenda').innerHTML = `Uso permitido: segunda a sábado, ${SLOTS[0].start} às ${SLOTS[SLOTS.length-1].end}`;
+
+  document.getElementById('btnAprovarTodas').classList.toggle('hidden', !(filtro==='pendente' && list.length>1));
+
+  host.innerHTML = list.length ? list.map(r=>resCard(r)).join('') : `
+    <div class="card"><div class="empty">
+      <div class="ico">${icon('search')}</div>
+      <h3>Nenhuma reserva encontrada</h3>
+      <p>Ajuste a busca ou os filtros para localizar as solicitações dos alunos.</p>
+      <button class="btn btn-soft btn-sm mt-16" id="btnLimpar">Limpar filtros</button>
+    </div></div>`;
+  document.getElementById('btnLimpar')?.addEventListener('click', ()=>{
+    q.value=''; periodo.value='todos'; selEsp.value=''; filtro='todas'; render();
+  });
+}
+
+/* aprovar em lote */
+document.getElementById('btnAprovarTodas').addEventListener('click', ()=>{
+  const list = filtradas().filter(r=>r.status==='pendente');
+  Modal.confirm({
+    title:`Aprovar ${list.length} reservas`, icon:'check-circle', tone:'ico-green',
+    message:`<p class="small muted-2">Todas as solicitações pendentes listadas serão confirmadas e os alunos notificados.</p>
+      <div class="summary mt-16">${list.map(r=>`<div class="row"><span>${esc(r.aluno)}</span><span>${fmtDate(r.data)} · ${slotLabel(r.hora)}</span></div>`).join('')}</div>`,
+    confirmText:'Aprovar todas'
+  }).then(async ok=>{
+    if(!ok) return;
+    list.forEach(r=>approveReservation(r.id));
+    toast('success', `${list.length} reservas aprovadas`, 'Os alunos foram notificados no aplicativo.');
+    render();
+  });
+});
+
+render();
+bindResActions(document.getElementById('lista'), render);
+
+/* deep-link: reservas.html#r-101 */
+if(location.hash){
+  const el = document.querySelector(`[data-id="${location.hash.slice(1)}"]`);
+  if(el){ filtro='todas'; render(); setTimeout(()=>{
+    const t = document.querySelector(`[data-id="${location.hash.slice(1)}"]`);
+    t?.scrollIntoView({behavior:'smooth', block:'center'});
+    t?.animate([{boxShadow:'0 0 0 0 rgba(21,101,192,.5)'},{boxShadow:'0 0 0 10px rgba(21,101,192,0)'}],{duration:1200});
+  }, 80); }
+}
+</script>
+</body>
+</html>

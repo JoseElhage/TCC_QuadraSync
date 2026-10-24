@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Meu perfil · QuadraSync Admin</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%231565C0'/%3E%3Ccircle cx='12' cy='12' r='6.2' fill='none' stroke='white' stroke-width='1.6'/%3E%3Cpath d='M12 5.8v12.4M5.8 12h12.4' stroke='white' stroke-width='1.6'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+<div class="shell">
+  <div id="sidebarHost"></div>
+  <div class="main">
+    <div id="topbarHost"></div>
+
+    <main class="page page-narrow">
+      <div class="page-head">
+        <h2>Meu perfil</h2>
+        <p>Dados funcionais, segurança da conta e preferências de notificação do painel administrativo.</p>
+      </div>
+
+      <!-- Hero -->
+      <section class="profile-hero fade-up">
+        <div class="in">
+          <span class="avatar xl" id="heroAvatar"></span>
+          <div class="grow">
+            <h2 id="heroNome">—</h2>
+            <div class="r" id="heroCargo"></div>
+            <div class="flex gap-8 wrap mt-12" id="heroBadges"></div>
+          </div>
+          <div class="flex gap-8 wrap">
+            <button class="btn btn-sm" style="background:rgba(255,255,255,.16);color:#fff;border-color:rgba(255,255,255,.26)" id="btnEditHero"></button>
+            <button class="btn btn-sm" style="background:#fff;color:var(--danger);border-color:#FCA5A5" id="btnSair"></button>
+          </div>
+        </div>
+        <div class="meta" id="heroMeta"></div>
+      </section>
+
+      <!-- Abas -->
+      <div class="tabs-line mt-24" id="tabs">
+        <button class="tab-line active" data-tab="dados">Dados pessoais</button>
+        <button class="tab-line" data-tab="seguranca">Segurança e acesso</button>
+        <button class="tab-line" data-tab="prefs">Preferências</button>
+      </div>
+
+      <!-- Dados pessoais -->
+      <section id="tab-dados">
+        <div class="card card-pad-lg fade-up d1">
+          <div class="between mb-20">
+            <div>
+              <h3 class="semi" style="font-size:16px">Informações funcionais</h3>
+              <p class="small muted mt-4">Estes dados aparecem nos registros de aprovação e bloqueio da quadra.</p>
+            </div>
+            <span class="badge badge-info" id="badgeDesde"></span>
+          </div>
+
+          <form id="formDados" novalidate>
+            <div class="form-grid">
+              <div class="field span-2">
+                <label class="label" for="nome">Nome completo <span class="req">*</span></label>
+                <div class="input-icon"><span data-icon="user"></span><input class="input" id="nome" type="text"></div>
+                <div class="field-error"></div>
+              </div>
+              <div class="field span-2">
+                <label class="label" for="email">E-mail institucional <span class="req">*</span></label>
+                <div class="input-icon"><span data-icon="mail"></span><input class="input" id="email" type="email"></div>
+                <div class="field-error"></div>
+              </div>
+              <div class="field">
+                <label class="label" for="matricula">Matrícula funcional</label>
+                <input class="input" id="matricula" type="text">
+              </div>
+              <div class="field">
+                <label class="label" for="telefone">Telefone</label>
+                <input class="input" id="telefone" type="tel" placeholder="(19) 99999-0000">
+              </div>
+              <div class="field">
+                <label class="label" for="setor">Setor</label>
+                <select class="select" id="setor">
+                  <option>Secretaria Acadêmica</option><option>Coordenação Pedagógica</option>
+                  <option>Diretoria de Serviços</option><option>Inspetoria de Alunos</option><option>Gestão de Esportes</option>
+                </select>
+              </div>
+              <div class="field">
+                <label class="label" for="cargo">Cargo no sistema</label>
+                <input class="input" id="cargo" type="text" readonly style="color:var(--text-3);cursor:not-allowed">
+                <div class="help">Permissões de administrador são concedidas pela direção.</div>
+              </div>
+            </div>
+            <div class="flex gap-10 mt-8">
+              <button class="btn btn-primary" type="submit" id="btnSalvarDados"></button>
+              <button class="btn btn-outline" type="button" id="btnCancelarDados">Descartar alterações</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- Segurança -->
+      <section id="tab-seguranca" class="hidden">
+        <div class="col gap-20">
+          <div class="card card-pad-lg fade-up d1">
+            <h3 class="semi mb-4" style="font-size:16px">Alterar senha</h3>
+            <p class="small muted mb-20">Use uma senha exclusiva para o painel. Ela não é compartilhada com o app dos alunos.</p>
+            <form id="formSenha" novalidate>
+              <div class="form-grid">
+                <div class="field span-2">
+                  <label class="label" for="senhaAtual">Senha atual <span class="req">*</span></label>
+                  <div class="input-icon"><span data-icon="lock"></span><input class="input" id="senhaAtual" type="password" placeholder="••••••••"></div>
+                  <div class="field-error"></div>
+                </div>
+                <div class="field">
+                  <label class="label" for="senhaNova">Nova senha <span class="req">*</span></label>
+                  <div class="input-icon"><span data-icon="lock"></span><input class="input" id="senhaNova" type="password" placeholder="Mínimo 8 caracteres"></div>
+                  <div class="strength" id="strength" data-score="0"><span></span><span></span><span></span><span></span></div>
+                  <div class="help" id="strengthTxt">Combine maiúsculas, números e símbolos.</div>
+                  <div class="field-error"></div>
+                </div>
+                <div class="field">
+                  <label class="label" for="senhaConf">Confirmar nova senha <span class="req">*</span></label>
+                  <div class="input-icon"><span data-icon="lock"></span><input class="input" id="senhaConf" type="password" placeholder="Repita a nova senha"></div>
+                  <div class="field-error"></div>
+                </div>
+              </div>
+              <button class="btn btn-primary mt-8" type="submit" id="btnTrocar"></button>
+            </form>
+          </div>
+
+          <div class="card fade-up d2">
+            <div class="card-head"><h2>Sessões ativas</h2><button class="btn btn-outline btn-sm" id="btnEncerrarTodas">Encerrar todas</button></div>
+            <div id="sessoes"></div>
+          </div>
+
+          <div class="danger-zone fade-up d3">
+            <div class="between wrap gap-12">
+              <div style="max-width:60ch">
+                <h3>Zona de risco</h3>
+                <p>Restaurar os dados de demonstração apaga reservas, bloqueios, moderadores e notificações criados neste navegador e recarrega o painel com o conteúdo original.</p>
+              </div>
+              <button class="btn btn-danger-outline btn-sm" id="btnReset"></button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Preferências -->
+      <section id="tab-prefs" class="hidden">
+        <div class="col gap-20">
+          <div class="card card-pad-lg fade-up d1">
+            <h3 class="semi mb-4" style="font-size:16px">Notificações</h3>
+            <p class="small muted mb-16">Escolha como o painel avisa sobre a movimentação da quadra.</p>
+            <div id="switches"></div>
+          </div>
+
+          <div class="card card-pad-lg fade-up d2">
+            <h3 class="semi mb-4" style="font-size:16px">Aparência</h3>
+            <p class="small muted mb-16">O tema é aplicado imediatamente e vale apenas para este painel.</p>
+            <div class="grid-2-eq" id="temas" style="gap:12px"></div>
+          </div>
+
+          <div class="card fade-up d3">
+            <div class="card-head"><h2>Regras de uso da quadra</h2><span class="badge badge-outline">somente leitura</span></div>
+            <div class="card-body">
+              <div class="summary">
+                <div class="row"><span>Horário liberado para reservas</span><span id="regHorario">—</span></div>
+                <div class="row"><span>Dias disponíveis</span><span>Segunda a sábado</span></div>
+                <div class="row"><span>Duração máxima por reserva</span><span>120 minutos</span></div>
+                <div class="row"><span>Antecedência mínima</span><span>24 horas</span></div>
+                <div class="row"><span>Esportes permitidos</span><span id="regEsportes">—</span></div>
+                <div class="row"><span>Placar e chaveamento</span><span>Moderadores da Etec League</span></div>
+              </div>
+              <p class="small muted mt-16">Estas regras são exibidas aos alunos no aplicativo e validadas no momento do pedido de reserva.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<div id="toasts"></div>
+
+<script src="../js/data.js"></script>
+<script src="../js/shell.js"></script>
+<script src="../js/actions.js"></script>
+<script>
+const user = mountShell('perfil', {title:'Meu perfil', subtitle:'Dados, segurança e preferências do administrador'});
+if(!user) throw new Error('sem sessão');
+
+const reg = DB.users.get().find(u => u.id === user.id) || DB.users.get()[0] || user;
+
+/* ---------- ícones declarativos ---------- */
+document.querySelectorAll('[data-icon]').forEach(el=>{ el.outerHTML = icon(el.dataset.icon,'i'); });
+document.getElementById('btnEditHero').innerHTML = icon('edit','i sm') + ' Editar dados';
+document.getElementById('btnSair').innerHTML     = icon('logout','i sm') + ' Sair';
+document.getElementById('btnSalvarDados').innerHTML = icon('check','i sm') + ' Salvar alterações';
+document.getElementById('btnTrocar').innerHTML   = icon('lock','i sm') + ' Atualizar senha';
+document.getElementById('btnReset').innerHTML    = icon('refresh','i sm') + ' Restaurar dados de demonstração';
+document.getElementById('btnSair').addEventListener('click', logout);
+document.getElementById('btnEditHero').addEventListener('click', ()=>setTab('dados'));
+
+/* ---------- hero ---------- */
+function renderHero(){
+  const r = DB.users.get().find(u=>u.id===user.id) || reg;
+  const decididas = DB.log.get().filter(l=>['aprovacao','recusa'].includes(l.tipo)).length;
+  const bloqueios = DB.blocks.get().filter(b=>b.por===r.nome).length;
+  document.getElementById('heroAvatar').textContent = initials(r.nome);
+  document.getElementById('heroNome').textContent = r.nome;
+  document.getElementById('heroCargo').innerHTML = `${icon('shield','i sm')} ${esc(r.cargo || 'Administrador')}`;
+  document.getElementById('heroBadges').innerHTML = `
+    <span class="badge" style="background:rgba(255,255,255,.18);color:#fff">${icon('mail','i sm')} ${esc(r.email)}</span>
+    <span class="badge" style="background:rgba(255,255,255,.18);color:#fff">Matrícula ${esc(r.matricula||'—')}</span>
+    <span class="badge" style="background:rgba(255,255,255,.18);color:#fff">${icon('school','i sm')} ${esc(r.setor||'Secretaria')}</span>`;
+  document.getElementById('heroMeta').innerHTML = [
+    {v:decididas, l:'Reservas analisadas'},
+    {v:bloqueios, l:'Bloqueios aplicados'},
+    {v:DB.mods.get().length, l:'Moderadores ativos'},
+    {v:r.desde ? `${MONTHS_SHORT[parseISO(r.desde).getMonth()]}/${String(parseISO(r.desde).getFullYear()).slice(2)}` : '—', l:'No sistema desde'}
+  ].map(m=>`<div><div class="v mono">${m.v}</div><div class="l">${m.l}</div></div>`).join('');
+  document.getElementById('badgeDesde').textContent = r.desde ? `Desde ${fmtDateLong(r.desde)}` : 'Conta nova';
+}
+
+/* ---------- formulário de dados ---------- */
+function fillDados(){
+  const r = DB.users.get().find(u=>u.id===user.id) || reg;
+  document.getElementById('nome').value = r.nome || '';
+  document.getElementById('email').value = r.email || '';
+  document.getElementById('matricula').value = r.matricula || '';
+  document.getElementById('telefone').value = r.telefone || '';
+  document.getElementById('setor').value = r.setor || 'Secretaria Acadêmica';
+  document.getElementById('cargo').value = r.cargo || 'Administrador · Secretaria';
+}
+fillDados();
+bindLiveValidation(document.getElementById('formDados'));
+document.getElementById('btnCancelarDados').addEventListener('click', ()=>{ fillDados(); toast('info','Alterações descartadas'); });
+
+document.getElementById('formDados').addEventListener('submit', async e=>{
+  e.preventDefault();
+  const nome = document.getElementById('nome'), email = document.getElementById('email');
+  let ok = true;
+  if(nome.value.trim().split(/\s+/).length < 2){ setInvalid(nome,'Informe nome e sobrenome.'); ok=false; }
+  if(!isEmail(email.value)){ setInvalid(email,'E-mail inválido.'); ok=false; }
+  if(!ok) return;
+
+  await busy(document.getElementById('btnSalvarDados'), 800);
+  const users = DB.users.get();
+  const alvo = users.find(u=>u.id===user.id) || users[0];
+  alvo.nome = nome.value.trim(); alvo.email = email.value.trim().toLowerCase();
+  alvo.matricula = document.getElementById('matricula').value.trim().toUpperCase();
+  alvo.telefone = document.getElementById('telefone').value.trim();
+  alvo.setor = document.getElementById('setor').value;
+  alvo.cargo = `Administrador · ${alvo.setor}`;
+  DB.users.set(users);
+  setSession({id:alvo.id, nome:alvo.nome, email:alvo.email, setor:alvo.setor, cargo:alvo.cargo, matricula:alvo.matricula});
+  user.nome = alvo.nome; user.email = alvo.email; user.setor = alvo.setor;
+
+  toast('success','Perfil atualizado','As informações foram salvas no painel.');
+  setTimeout(()=>location.reload(), 700);
+});
+
+/* ---------- senha ---------- */
+const senhaNova = document.getElementById('senhaNova');
+const LABELS = ['','Senha fraca','Senha razoável','Senha boa','Senha forte'];
+senhaNova.addEventListener('input', ()=>{
+  const v = senhaNova.value; let s = 0;
+  if(v.length>=8) s++; if(/[A-Z]/.test(v)&&/[a-z]/.test(v)) s++; if(/\d/.test(v)) s++; if(/[^\w\s]/.test(v)) s++;
+  if(!v) s=0;
+  document.getElementById('strength').dataset.score = s;
+  const t = document.getElementById('strengthTxt');
+  t.textContent = v ? `${LABELS[s]} · ${v.length} caracteres` : 'Combine maiúsculas, números e símbolos.';
+  t.style.color = s>=3?'var(--ok)':(s===2?'var(--warn)':(v?'var(--danger)':'var(--text-3)'));
+});
+bindLiveValidation(document.getElementById('formSenha'));
+document.getElementById('formSenha').addEventListener('submit', async e=>{
+  e.preventDefault();
+  const atual = document.getElementById('senhaAtual'), conf = document.getElementById('senhaConf');
+  const users = DB.users.get(); const alvo = users.find(u=>u.id===user.id) || users[0];
+  let ok = true;
+  if(atual.value !== alvo.senha){ setInvalid(atual,'Senha atual incorreta.'); ok=false; }
+  if(senhaNova.value.length < 8){ setInvalid(senhaNova,'Mínimo de 8 caracteres.'); ok=false; }
+  if(conf.value !== senhaNova.value || !conf.value){ setInvalid(conf,'As senhas não coincidem.'); ok=false; }
+  if(!ok) return;
+
+  await busy(document.getElementById('btnTrocar'), 850);
+  alvo.senha = senhaNova.value; DB.users.set(users);
+  e.target.reset();
+  document.getElementById('strength').dataset.score = 0;
+  document.getElementById('strengthTxt').textContent = 'Combine maiúsculas, números e símbolos.';
+  document.getElementById('strengthTxt').style.color = 'var(--text-3)';
+  toast('success','Senha atualizada','Use a nova senha no próximo acesso ao painel.');
+});
+
+/* ---------- sessões ---------- */
+const SESSOES = [
+  {d:'Painel web · este navegador', s:`${navigator.platform || 'Desktop'} · ativo agora`, atual:true},
+  {d:'Aplicativo administrativo (tablet)', s:'Secretaria · visto há 2 dias'},
+  {d:'Painel web · Chrome (Windows)', s:'Serra Negra/SP · visto há 6 dias'}
+];
+function renderSessoes(){
+  document.getElementById('sessoes').innerHTML = SESSOES.map((x,i)=>`
+    <div class="mini-item">
+      <span class="ico ${x.atual?'ico-green':'ico-blue'}">${icon(x.atual?'home':'settings','i sm')}</span>
+      <div class="grow"><div class="t">${x.d} ${x.atual?'<span class="badge badge-ok" style="margin-left:6px">Sessão atual</span>':''}</div>
+      <div class="s">${icon('clock','i sm')} ${x.s}</div></div>
+      ${x.atual?'':`<button class="btn btn-outline btn-sm" data-end="${i}">Encerrar</button>`}
+    </div>`).join('');
+  document.querySelectorAll('[data-end]').forEach(b=>b.addEventListener('click', ()=>{
+    SESSOES.splice(Number(b.dataset.end),1); renderSessoes();
+    toast('warn','Sessão encerrada','O dispositivo foi desconectado da conta.');
+  }));
+}
+document.getElementById('btnEncerrarTodas').addEventListener('click', ()=>{
+  Modal.confirm({
+    title:'Encerrar outras sessões', icon:'logout', tone:'ico-red', danger:true,
+    message:'<p class="small muted-2">Todos os outros dispositivos conectados a esta conta serão desconectados. Você continua conectado neste navegador.</p>',
+    confirmText:'Encerrar outras sessões'
+  }).then(ok=>{ if(!ok) return; SESSOES.splice(1); renderSessoes(); toast('success','Sessões encerradas','Apenas este dispositivo continua conectado.'); });
+});
+
+/* ---------- preferências ---------- */
+const SWITCHES = [
+  {k:'emailReservas',    t:'E-mail a cada nova solicitação', d:'Receba um aviso assim que um aluno pedir a quadra.'},
+  {k:'emailModeradores', t:'E-mail sobre moderadores',       d:'Promoções, remoções e alterações de permissão.'},
+  {k:'resumoSemanal',    t:'Resumo semanal da quadra',       d:'Relatório com ocupação, reservas e bloqueios às segundas-feiras.'},
+  {k:'som',              t:'Som de notificação',             d:'Tocar um aviso sonoro ao receber pedidos pendentes.'}
+];
+function renderPrefs(){
+  const p = DB.prefs.get();
+  document.getElementById('switches').innerHTML = SWITCHES.map(s=>`
+    <div class="switch-row">
+      <div><div class="t">${s.t}</div><div class="d">${s.d}</div></div>
+      <label class="switch"><input type="checkbox" data-pref="${s.k}" ${p[s.k]?'checked':''}><span class="slider"></span></label>
+    </div>`).join('');
+  document.querySelectorAll('[data-pref]').forEach(inp=>inp.addEventListener('change', ()=>{
+    const prefs = DB.prefs.get(); prefs[inp.dataset.pref] = inp.checked; DB.prefs.set(prefs);
+    toast(inp.checked?'success':'info', inp.checked?'Preferência ativada':'Preferência desativada',
+      SWITCHES.find(s=>s.k===inp.dataset.pref).t);
+  }));
+
+  const temas = [{id:'claro',t:'Claro',d:'Padrão do painel, melhor em ambientes iluminados.',ico:'sun'},
+                 {id:'escuro',t:'Escuro',d:'Menos brilho, ideal para a secretaria à noite.',ico:'moon'}];
+  document.getElementById('temas').innerHTML = temas.map(x=>`
+    <label class="radio-card ${p.tema===x.id?'selected':''}">
+      <input type="radio" name="tema" value="${x.id}" ${p.tema===x.id?'checked':''}>
+      <span><span class="t">${x.t}</span><span class="d">${x.d}</span></span>
+    </label>`).join('');
+  bindRadioCards(document.getElementById('temas'));
+  document.querySelectorAll('input[name="tema"]').forEach(r=>r.addEventListener('change', ()=>{
+    setTheme(r.value);
+    document.querySelectorAll('#temas .radio-card').forEach(c=>c.classList.toggle('selected', c.querySelector('input').checked));
+    toast('info','Tema alterado', `Painel no tema ${r.value}.`);
+  }));
+}
+
+/* ---------- regras ---------- */
+document.getElementById('regHorario').textContent = `${SLOTS[0].start} às ${SLOTS[SLOTS.length-1].end}`;
+document.getElementById('regEsportes').textContent = Object.values(SPORTS).map(s=>s.label).join(', ');
+
+/* ---------- reset demo ---------- */
+document.getElementById('btnReset').addEventListener('click', ()=>{
+  Modal.confirm({
+    title:'Restaurar dados de demonstração', icon:'refresh', tone:'ico-red', danger:true,
+    message:'<p class="small muted-2">Reservas, bloqueios, moderadores, notificações e contas criadas neste navegador serão substituídos pelo conteúdo inicial da demonstração.</p>',
+    confirmText:'Restaurar agora'
+  }).then(ok=>{ if(!ok) return; resetDemo(); toast('success','Demonstração restaurada'); setTimeout(()=>location.href='login.html', 900); });
+});
+
+/* ---------- abas ---------- */
+function setTab(id){
+  document.querySelectorAll('.tab-line').forEach(t=>t.classList.toggle('active', t.dataset.tab===id));
+  ['dados','seguranca','prefs'].forEach(t=>document.getElementById('tab-'+t).classList.toggle('hidden', t!==id));
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+document.querySelectorAll('.tab-line').forEach(t=>t.addEventListener('click', ()=>setTab(t.dataset.tab)));
+
+renderHero(); renderSessoes(); renderPrefs();
+</script>
+</body>
+</html>

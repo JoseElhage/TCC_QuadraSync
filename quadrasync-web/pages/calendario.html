@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calendário · QuadraSync Admin</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%231565C0'/%3E%3Ccircle cx='12' cy='12' r='6.2' fill='none' stroke='white' stroke-width='1.6'/%3E%3Cpath d='M12 5.8v12.4M5.8 12h12.4' stroke='white' stroke-width='1.6'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+<div class="shell">
+  <div id="sidebarHost"></div>
+  <div class="main">
+    <div id="topbarHost"></div>
+
+    <main class="page">
+      <div class="page-head page-head-row">
+        <div>
+          <h2>Calendário da quadra</h2>
+          <p>Veja a ocupação dia a dia e bloqueie qualquer horário com um motivo — o intervalo some imediatamente das opções de reserva no app dos alunos.</p>
+        </div>
+        <div class="flex gap-8 wrap">
+          <button class="btn btn-outline btn-sm" id="btnHoje"></button>
+          <button class="btn btn-primary btn-sm" id="btnBlock"></button>
+        </div>
+      </div>
+
+      <div class="grid-cal">
+        <!-- Coluna do calendário -->
+        <div class="col gap-20">
+          <div class="card fade-up">
+            <div class="cal-head">
+              <div class="cal-nav">
+                <button class="icon-btn" id="prev" aria-label="Mês anterior"></button>
+                <div class="cal-title" id="calTitle">—</div>
+                <button class="icon-btn" id="next" aria-label="Próximo mês"></button>
+              </div>
+              <div class="flex gap-6 wrap" id="calStats"></div>
+            </div>
+
+            <div class="cal-dows" id="dows"></div>
+            <div class="cal-grid" id="grid"></div>
+
+            <div class="legend">
+              <div><i style="background:var(--ok)"></i> Confirmada</div>
+              <div><i style="background:var(--warn)"></i> Pendente</div>
+              <div><i style="background:var(--danger)"></i> Bloqueado</div>
+              <div><i style="background:var(--info)"></i> Concluída</div>
+              <div><i style="background:var(--border)"></i> Livre</div>
+            </div>
+          </div>
+
+          <div class="card fade-up d2">
+            <div class="card-head">
+              <div class="flex gap-10">
+                <h2>Bloqueios aplicados</h2>
+                <span class="badge badge-danger" id="blocksBadge"></span>
+              </div>
+              <button class="btn btn-outline btn-sm" id="btnBlock2"></button>
+            </div>
+            <div id="blocksList"></div>
+          </div>
+        </div>
+
+        <!-- Painel do dia -->
+        <div class="sticky-col">
+          <div class="card fade-up d1">
+            <div class="day-head" id="dayHead"></div>
+            <div id="dayNote"></div>
+            <div class="slots" id="slots"></div>
+            <div class="card-foot between" id="dayFoot"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<div id="toasts"></div>
+
+<script src="../js/data.js"></script>
+<script src="../js/shell.js"></script>
+<script src="../js/actions.js"></script>
+<script>
+const user = mountShell('calendario', {title:'Calendário', subtitle:'Ocupação da quadra e bloqueios por horário'});
+if(!user) throw new Error('sem sessão');
+
+/* ---------- estado ---------- */
+const hoje = new Date();
+let view = {y: hoje.getFullYear(), m: hoje.getMonth()};
+let selected = TODAY_ISO;
+
+/* ---------- ícones ---------- */
+document.getElementById('prev').innerHTML = icon('chevL');
+document.getElementById('next').innerHTML = icon('chevR');
+document.getElementById('btnHoje').innerHTML  = icon('refresh','i sm') + ' Hoje';
+document.getElementById('btnBlock').innerHTML = icon('lock','i sm') + ' Bloquear horário';
+document.getElementById('btnBlock2').innerHTML= icon('plus','i sm') + ' Novo bloqueio';
+document.getElementById('dows').innerHTML = ['seg','ter','qua','qui','sex','sáb','dom'].map(d=>`<div>${d}</div>`).join('');
+
+document.getElementById('prev').addEventListener('click', ()=>{ view.m--; if(view.m<0){view.m=11;view.y--;} renderCal(); });
+document.getElementById('next').addEventListener('click', ()=>{ view.m++; if(view.m>11){view.m=0;view.y++;} renderCal(); });
+document.getElementById('btnHoje').addEventListener('click', ()=>{
+  const d = new Date(); view = {y:d.getFullYear(), m:d.getMonth()}; selected = TODAY_ISO; renderAll();
+  toast('info','Calendário atualizado', `Exibindo ${MONTHS[view.m]} de ${view.y}.`);
+});
+const openBlock = (data,hora)=>openBlockModal({data,hora}, renderAll);
+document.getElementById('btnBlock').addEventListener('click', ()=>openBlock(selected, SLOTS[0].start));
+document.getElementById('btnBlock2').addEventListener('click', ()=>openBlock(selected, SLOTS[0].start));
+
+/* ---------- eventos do dia ---------- */
+function dayEvents(d){
+  const items = [];
+  DB.res.get().filter(r => r.data===d && ACTIVE.includes(r.status)).forEach(r=>{
+    const kind = r.status==='pendente' ? 'warn' : (r.status==='concluida' ? 'info' : 'ok');
+    items.push({kind, label:r.hora, sort:r.hora,
+      full:`${r.hora} ${r.aluno} (${STATUS[r.status].label})`});
+  });
+  DB.blocks.get().filter(b => b.data===d).forEach(b=>{
+    items.push({kind:'danger', label:b.hora, sort:b.hora,
+      full:`${b.hora} bloqueado — ${b.motivo}`});
+  });
+  return items.sort((a,b)=>a.sort.localeCompare(b.sort));
+}
+
+/* ---------- calendário ---------- */
+function renderCal(){
+  const mName = MONTHS[view.m][0].toUpperCase() + MONTHS[view.m].slice(1);
+  document.getElementById('calTitle').textContent = `${mName} de ${view.y}`;
+
+  const first = new Date(view.y, view.m, 1, 12);
+  const offset = (first.getDay() + 6) % 7;                 // segunda = 0
+  const daysInMonth = new Date(view.y, view.m+1, 0).getDate();
+  const weeks = Math.ceil((offset + daysInMonth) / 7);
+  const total = weeks * 7;
+
+  let html = '';
+  for(let i=0;i<total;i++){
+    const dayNum = i - offset + 1;
+    const dt = new Date(view.y, view.m, dayNum, 12);
+    const dISO = iso(dt);
+    const other = dayNum < 1 || dayNum > daysInMonth;
+    const ev = other ? [] : dayEvents(dISO);
+    const minis = ev.slice(0,2).map(e=>`<span class="mini ${e.kind}">${esc(e.label)}</span>`).join('');
+    const more  = ev.length > 2 ? `<span class="more">+${ev.length-2} horário(s)</span>` : '';
+
+    html += `<button class="cal-cell ${other?'other':''} ${dISO===TODAY_ISO?'today':''} ${dISO===selected?'selected':''}"
+      data-date="${dISO}" ${other?'tabindex="-1"':''} title="${esc(ev.map(e=>e.full).join(' · '))}"
+      aria-label="${fmtDateLong(dISO)} — ${ev.length} evento(s)">
+      <span class="num mono">${dt.getDate()}</span>
+      ${minis}${more}
+      ${ev.length?`<span class="dots">${ev.slice(0,5).map(e=>`<i style="background:var(--${e.kind==='ok'?'ok':e.kind==='warn'?'warn':e.kind==='danger'?'danger':'info'})"></i>`).join('')}</span>`:''}
+    </button>`;
+  }
+  const grid = document.getElementById('grid');
+  grid.innerHTML = html;
+  grid.querySelectorAll('.cal-cell').forEach(c=>c.addEventListener('click', ()=>{
+    selected = c.dataset.date;
+    const d = parseISO(selected);
+    view = {y:d.getFullYear(), m:d.getMonth()};
+    renderAll();
+  }));
+
+  /* estatísticas do mês */
+  const prefix = `${view.y}-${pad(view.m+1)}`;
+  const resMes = DB.res.get().filter(r=>r.data.startsWith(prefix));
+  const blkMes = DB.blocks.get().filter(b=>b.data.startsWith(prefix));
+  document.getElementById('calStats').innerHTML = `
+    <span class="badge badge-ok">${resMes.filter(r=>r.status==='confirmada'||r.status==='concluida').length} confirmadas</span>
+    <span class="badge badge-warn">${resMes.filter(r=>r.status==='pendente').length} pendentes</span>
+    <span class="badge badge-danger">${blkMes.length} bloqueios</span>`;
+
+  renderBlocks();
+}
+
+/* ---------- painel do dia ---------- */
+function renderDay(){
+  const d = parseISO(selected);
+  const ev = dayEvents(selected);
+  const past = selected < TODAY_ISO;
+
+  document.getElementById('dayHead').innerHTML = `
+    <div class="between wrap gap-8">
+      <div>
+        <div class="dow">${weekdayLong(selected)}</div>
+        <div class="date">${d.getDate()} de ${MONTHS[d.getMonth()]} de ${d.getFullYear()}</div>
+      </div>
+      <div class="flex gap-6 wrap">
+        ${selected===TODAY_ISO?'<span class="badge badge-info">Hoje</span>':''}
+        <span class="badge ${ev.length?'badge-warn':'badge-ok'}">${ev.length} ${ev.length===1?'evento':'eventos'}</span>
+      </div>
+    </div>`;
+
+  document.getElementById('dayNote').innerHTML = past
+    ? `<div class="day-note">${icon('info','i sm')} Data no passado — apenas consulta do histórico.</div>`
+    : (d.getDay()===0 ? `<div class="day-note warn">${icon('alert','i sm')} Domingos: quadra indisponível para reservas externas.</div>` : '');
+
+  const host = document.getElementById('slots');
+  host.innerHTML = SLOTS.map(s=>{
+    const st = slotState(selected, s.start);
+    const hour = `<div class="hour mono">${s.start} – ${s.end}</div>`;
+    const disabled = past || d.getDay()===0;
+
+    if(st.kind==='bloqueado'){
+      const b = st.block, isFirst = s.start === b.hora;
+      return `<div class="slot bloqueado ${past?'past':''}">${hour}
+        <div class="info">
+          <div class="t">${icon('lock','i sm')} ${isFirst ? esc(b.motivo) : 'Bloqueio contínuo'}</div>
+          <div class="s">${isFirst ? `${b.hora} às ${b.ate||endOf(b.hora)} · por ${esc(b.por)}${b.obs?' — '+esc(b.obs):''}` : 'Este horário faz parte do bloqueio acima.'}</div>
+        </div>
+        <div class="acts">${isFirst && !past ? `<button class="btn btn-success-soft btn-sm" data-unblock="${b.id}">${icon('unlock','i sm')} Liberar</button>` : ''}</div>
+      </div>`;
+    }
+
+    if(st.res){
+      const r = st.res, isFirst = s.start === r.hora;
+      const sp = SPORTS[r.esporte] || SPORTS.geral;
+      if(!isFirst){
+        return `<div class="slot ${st.kind==='pendente'?'pendente':(st.kind==='concluida'?'concluida':'reservada')} ${past?'past':''}">${hour}
+          <div class="info"><div class="t muted">Continuação · ${esc(r.aluno)}</div><div class="s">${sp.label} — ${slotLabel(r.hora)} (${r.duracao} min)</div></div>
+          <div class="acts"></div></div>`;
+      }
+      const cls = r.status==='pendente' ? 'pendente' : (r.status==='concluida' ? 'concluida' : 'reservada');
+      const acts = r.status==='pendente' && !past
+        ? `<button class="btn btn-success-soft btn-sm" data-act="aprovar" data-id="${r.id}">${icon('check','i sm')} Aprovar</button>
+           <button class="btn btn-danger-soft btn-sm" data-act="recusar" data-id="${r.id}">${icon('x','i sm')} Recusar</button>`
+        : r.status==='confirmada' && !past
+        ? `<button class="btn btn-outline btn-sm" data-act="detalhes" data-id="${r.id}">${icon('eye','i sm')}</button>
+           <button class="btn btn-danger-outline btn-sm" data-act="cancelar" data-id="${r.id}">${icon('ban','i sm')}</button>`
+        : `<button class="btn btn-ghost btn-sm" data-act="detalhes" data-id="${r.id}">${icon('eye','i sm')} Ver</button>`;
+
+      return `<div class="slot ${cls} ${past?'past':''}">${hour}
+        <div class="info">
+          <div class="t">${esc(r.aluno)} <span class="muted" style="font-weight:500">· ${esc(r.turma)}</span></div>
+          <div class="s">${sp.label} — ${esc(r.motivo)}${r.placar?' · Placar: '+esc(r.placar):''}</div>
+        </div>
+        <div class="acts">${acts}</div>
+      </div>`;
+    }
+
+    if(st.kind==='passado' || disabled){
+      return `<div class="slot past">${hour}
+        <div class="info"><div class="t muted">Fora do período de reservas</div><div class="s">${past?'Data passada':'Indisponível neste dia'}</div></div>
+        <div class="acts"></div></div>`;
+    }
+
+    return `<div class="slot livre">${hour}
+      <div class="info"><div class="t" style="color:var(--ok);font-weight:700">${icon('check-circle','i sm')} Horário disponível</div>
+      <div class="s">Nenhuma reserva ou bloqueio neste intervalo.</div></div>
+      <div class="acts"><button class="btn btn-danger-soft btn-sm" data-block="${s.start}">${icon('lock','i sm')} Bloquear</button></div>
+    </div>`;
+  }).join('');
+
+  host.querySelectorAll('[data-block]').forEach(b=>b.addEventListener('click',()=>openBlock(selected, b.dataset.block)));
+  host.querySelectorAll('[data-unblock]').forEach(b=>b.addEventListener('click',()=>unblock(b.dataset.unblock, renderAll)));
+
+  const ocupados = SLOTS.filter(s=>slotState(selected,s.start).kind!=='livre' && slotState(selected,s.start).kind!=='passado').length;
+  document.getElementById('dayFoot').innerHTML = `
+    <span class="small muted">${ocupados} de ${SLOTS.length} horários ocupados</span>
+    <button class="btn btn-outline btn-sm" id="footBlock" ${past?'disabled':''}>${icon('lock','i sm')} Bloquear intervalo</button>`;
+  document.getElementById('footBlock')?.addEventListener('click', ()=>openBlock(selected, SLOTS[0].start));
+}
+
+/* ---------- lista de bloqueios ---------- */
+function renderBlocks(){
+  const prefix = `${view.y}-${pad(view.m+1)}`;
+  const list = DB.blocks.get().filter(b=>b.data.startsWith(prefix)).sort((a,b)=>a.data.localeCompare(b.data)||a.hora.localeCompare(b.hora));
+  document.getElementById('blocksBadge').innerHTML = `<span class="dot"></span>${list.length} no mês`;
+  const host = document.getElementById('blocksList');
+
+  host.innerHTML = list.length ? list.map(b=>{
+    const d = parseISO(b.data), past = b.data < TODAY_ISO;
+    return `<div class="block-item" style="${past?'opacity:.6':''}">
+      <div class="when"><div class="d mono">${pad(d.getDate())}</div><div class="m">${MONTHS_SHORT[d.getMonth()]}</div></div>
+      <div class="grow" style="min-width:0">
+        <div class="t">${esc(b.motivo)}</div>
+        <div class="s">${icon('clock','i sm')} ${b.hora} às ${b.ate||endOf(b.hora)} · ${DOWS_SHORT[d.getDay()]} · por ${esc(b.por)}${b.obs?' — '+esc(b.obs):''}</div>
+      </div>
+      <div class="flex gap-6 bi-acts">
+        <button class="btn btn-ghost btn-sm" data-goto="${b.data}">Ver dia</button>
+        ${past?'':`<button class="btn btn-success-soft btn-sm" data-unblock="${b.id}">${icon('unlock','i sm')} Liberar</button>`}
+      </div>
+    </div>`;
+  }).join('') : `<div class="empty"><div class="ico">${icon('unlock')}</div>
+    <h3>Nenhum bloqueio em ${MONTHS[view.m][0].toUpperCase()+MONTHS[view.m].slice(1)}</h3>
+    <p>Todos os horários deste mês estão livres para reservas dos alunos.</p></div>`;
+
+  host.querySelectorAll('[data-unblock]').forEach(b=>b.addEventListener('click',()=>unblock(b.dataset.unblock, renderAll)));
+  host.querySelectorAll('[data-goto]').forEach(b=>b.addEventListener('click',()=>{
+    selected = b.dataset.goto;
+    const d = parseISO(selected); view = {y:d.getFullYear(), m:d.getMonth()};
+    renderAll();
+    document.getElementById('slots').scrollIntoView({behavior:'smooth', block:'center'});
+  }));
+}
+
+function renderAll(){ renderCal(); renderDay(); }
+renderAll();
+bindResActions(document.getElementById('slots'), renderAll);
+</script>
+</body>
+</html>

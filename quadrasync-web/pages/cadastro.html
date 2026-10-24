@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cadastro de administrador · QuadraSync Admin</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%231565C0'/%3E%3Ccircle cx='12' cy='12' r='6.2' fill='none' stroke='white' stroke-width='1.6'/%3E%3Cpath d='M12 5.8v12.4M5.8 12h12.4' stroke='white' stroke-width='1.6'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+<div class="auth">
+  <section class="auth-panel">
+    <div class="auth-brand">
+      <div class="mark" id="brandMark"></div>
+      <div><strong>QuadraSync</strong><span>Painel administrativo</span></div>
+    </div>
+
+    <div class="auth-hero">
+      <h1>Crie o acesso da sua equipe de secretaria.</h1>
+      <p>Cada administrador gerencia reservas, bloqueios de horário e a equipe de moderadores da Etec League.</p>
+
+      <ul class="auth-features">
+        <li><span class="fi" data-icon="user"></span> Cadastro vinculado à matrícula funcional</li>
+        <li><span class="fi" data-icon="lock"></span> Senha com verificação de força</li>
+        <li><span class="fi" data-icon="bell"></span> Alertas de novas solicitações de reserva</li>
+        <li><span class="fi" data-icon="shield"></span> Permissões de administrador completo</li>
+      </ul>
+    </div>
+
+    <div class="auth-foot"><span data-icon="school" data-size="sm"></span> Somente funcionários autorizados da Etec podem criar conta neste painel.</div>
+  </section>
+
+  <section class="auth-form-side">
+    <div class="auth-card fade-up" style="max-width:520px">
+      <a href="login.html" class="btn btn-ghost btn-sm mb-16" style="margin-left:-8px"><span data-icon="arrowLeft" data-size="sm"></span> Voltar para o login</a>
+      <span class="kicker"><span data-icon="plus" data-size="sm"></span> Novo administrador</span>
+      <h2>Solicitar cadastro</h2>
+      <p class="lead">Preencha os dados funcionais para liberar seu acesso ao painel da quadra.</p>
+
+      <form class="mt-24" id="formCadastro" novalidate>
+        <div class="form-grid">
+          <div class="field span-2">
+            <label class="label" for="nome">Nome completo <span class="req">*</span></label>
+            <div class="input-icon"><span data-icon="user"></span>
+              <input class="input" id="nome" type="text" placeholder="Ex.: Cláudia Ferreira" autocomplete="name">
+            </div>
+            <div class="field-error"></div>
+          </div>
+
+          <div class="field span-2">
+            <label class="label" for="email">E-mail institucional <span class="req">*</span></label>
+            <div class="input-icon"><span data-icon="mail"></span>
+              <input class="input" id="email" type="email" placeholder="nome.sobrenome@etec.sp.gov.br" autocomplete="email">
+            </div>
+            <div class="field-error"></div>
+          </div>
+
+          <div class="field">
+            <label class="label" for="matricula">Matrícula funcional <span class="req">*</span></label>
+            <input class="input" id="matricula" type="text" placeholder="SEC-2024-000">
+            <div class="field-error"></div>
+          </div>
+
+          <div class="field">
+            <label class="label" for="setor">Setor <span class="req">*</span></label>
+            <select class="select" id="setor">
+              <option value="">Selecione…</option>
+              <option>Secretaria Acadêmica</option>
+              <option>Coordenação Pedagógica</option>
+              <option>Diretoria de Serviços</option>
+              <option>Inspetoria de Alunos</option>
+              <option>Gestão de Esportes</option>
+            </select>
+            <div class="field-error"></div>
+          </div>
+
+          <div class="field span-2">
+            <label class="label" for="telefone">Telefone <span class="label-hint">(opcional)</span></label>
+            <input class="input" id="telefone" type="tel" placeholder="(19) 99999-0000">
+          </div>
+
+          <div class="field span-2">
+            <label class="label" for="senha">Senha <span class="req">*</span></label>
+            <div class="input-icon"><span data-icon="lock"></span>
+              <input class="input" id="senha" type="password" placeholder="Mínimo de 8 caracteres" autocomplete="new-password">
+              <button type="button" class="toggle-pass" id="togglePass" aria-label="Mostrar senha" data-icon="eye"></button>
+            </div>
+            <div class="strength" id="strength" data-score="0"><span></span><span></span><span></span><span></span></div>
+            <div class="help" id="strengthTxt">Use letras maiúsculas, números e símbolos para uma senha forte.</div>
+            <div class="field-error"></div>
+          </div>
+
+          <div class="field span-2">
+            <label class="label" for="senha2">Confirmar senha <span class="req">*</span></label>
+            <div class="input-icon"><span data-icon="lock"></span>
+              <input class="input" id="senha2" type="password" placeholder="Repita a senha" autocomplete="new-password">
+            </div>
+            <div class="field-error"></div>
+          </div>
+        </div>
+
+        <label class="check mb-20" id="termosWrap">
+          <input type="checkbox" id="termos">
+          <span>Li e aceito a <a href="#" id="linkPolitica">política de uso do QuadraSync</a> e declaro ser funcionário autorizado da escola.</span>
+        </label>
+
+        <button class="btn btn-primary btn-lg btn-block" type="submit" id="btnCadastrar">
+          <span data-icon="check"></span> Criar conta de administrador
+        </button>
+      </form>
+
+      <p class="auth-alt">Já possui acesso? <a href="login.html">Entrar no painel</a></p>
+    </div>
+  </section>
+</div>
+
+<div id="toasts"></div>
+
+<script src="../js/data.js"></script>
+<script src="../js/shell.js"></script>
+<script>
+function paintIcons(scope=document){
+  scope.querySelectorAll('[data-icon]').forEach(el=>{
+    const size = el.dataset.size === 'sm' ? 'i sm' : (el.dataset.size === 'lg' ? 'i lg' : 'i');
+    const svg = icon(el.dataset.icon, size);
+    if(el.tagName === 'SPAN' && el.closest('.input-icon') && !el.classList.contains('fi')) el.outerHTML = svg;
+    else el.innerHTML = svg;
+  });
+}
+paintIcons();
+document.getElementById('brandMark').innerHTML = icon('ball','i lg');
+
+if(getSession()) location.replace('index.html');
+
+/* força de senha */
+const senha = document.getElementById('senha');
+const strength = document.getElementById('strength');
+const strengthTxt = document.getElementById('strengthTxt');
+const LABELS = ['','Senha fraca','Senha razoável','Senha boa','Senha forte'];
+senha.addEventListener('input', () => {
+  const v = senha.value;
+  let score = 0;
+  if(v.length >= 8) score++;
+  if(/[A-Z]/.test(v) && /[a-z]/.test(v)) score++;
+  if(/\d/.test(v)) score++;
+  if(/[^\w\s]/.test(v)) score++;
+  if(!v) score = 0;
+  strength.dataset.score = score;
+  strengthTxt.textContent = v ? LABELS[score] + ' · ' + v.length + ' caracteres' : 'Use letras maiúsculas, números e símbolos para uma senha forte.';
+  strengthTxt.style.color = score >= 3 ? 'var(--ok)' : (score === 2 ? 'var(--warn)' : (v ? 'var(--danger)' : 'var(--text-3)'));
+});
+
+/* mostrar senha */
+const toggle = document.getElementById('togglePass');
+toggle.addEventListener('click', () => {
+  const showing = senha.type === 'text';
+  senha.type = showing ? 'password' : 'text';
+  document.getElementById('senha2').type = senha.type;
+  toggle.innerHTML = icon(showing ? 'eye' : 'eye-off');
+});
+
+document.getElementById('linkPolitica').addEventListener('click', e => {
+  e.preventDefault();
+  Modal.open({
+    title:'Política de uso do painel', subtitle:'Resumo para administradores', icon:'shield', tone:'ico-blue', size:'wide',
+    body:`<ul class="col gap-12 small muted-2" style="list-style:none">
+      <li>• O acesso é exclusivo de funcionários autorizados da secretaria e da gestão de esportes.</li>
+      <li>• Toda aprovação, recusa e bloqueio de horário fica registrado em log com o nome do responsável.</li>
+      <li>• Dados dos alunos são usados apenas para a gestão das reservas da quadra.</li>
+      <li>• A promoção de moderadores é responsabilidade do administrador e pode ser revertida a qualquer momento.</li>
+      <li>• Em caso de uso indevido, a conta é suspensa pela direção de serviços.</li>
+    </ul>`,
+    footer:`<button class="btn btn-primary" data-close>Li e entendi</button>`
+  });
+});
+
+/* telefone: máscara leve */
+const tel = document.getElementById('telefone');
+tel.addEventListener('input', () => {
+  let d = tel.value.replace(/\D/g,'').slice(0,11);
+  if(d.length > 6) d = `(${d.slice(0,2)}) ${d.slice(2,d.length-4)}-${d.slice(-4)}`;
+  else if(d.length > 2) d = `(${d.slice(0,2)}) ${d.slice(2)}`;
+  else if(d.length) d = `(${d}`;
+  tel.value = d;
+});
+
+/* submit */
+const form = document.getElementById('formCadastro');
+bindLiveValidation(form);
+form.addEventListener('submit', async e => {
+  e.preventDefault();
+  const f = {
+    nome:document.getElementById('nome'), email:document.getElementById('email'),
+    matricula:document.getElementById('matricula'), setor:document.getElementById('setor'),
+    senha:document.getElementById('senha'), senha2:document.getElementById('senha2')
+  };
+  const termos = document.getElementById('termos');
+  let ok = true;
+
+  if(f.nome.value.trim().split(/\s+/).length < 2){ setInvalid(f.nome,'Informe nome e sobrenome.'); ok=false; }
+  if(!isEmail(f.email.value)){ setInvalid(f.email,'E-mail institucional inválido.'); ok=false; }
+  if(DB.users.get().some(u=>u.email.toLowerCase()===f.email.value.trim().toLowerCase())){ setInvalid(f.email,'Este e-mail já possui cadastro.'); ok=false; }
+  if(f.matricula.value.trim().length < 5){ setInvalid(f.matricula,'Informe a matrícula funcional.'); ok=false; }
+  if(!f.setor.value){ setInvalid(f.setor,'Selecione o setor.'); ok=false; }
+  if(f.senha.value.length < 8){ setInvalid(f.senha,'A senha precisa de ao menos 8 caracteres.'); ok=false; }
+  if(f.senha2.value !== f.senha.value || !f.senha2.value){ setInvalid(f.senha2,'As senhas não coincidem.'); ok=false; }
+
+  if(!ok){ toast('error','Não foi possível cadastrar','Revise os campos destacados em vermelho.'); return; }
+  if(!termos.checked){ toast('warn','Aceite necessário','Confirme que você leu a política de uso.'); return; }
+
+  await busy(document.getElementById('btnCadastrar'), 1000);
+
+  const users = DB.users.get();
+  users.push({
+    id:uid('adm'), nome:f.nome.value.trim(), email:f.email.value.trim().toLowerCase(),
+    senha:f.senha.value, matricula:f.matricula.value.trim().toUpperCase(),
+    setor:f.setor.value, cargo:'Administrador · ' + f.setor.value,
+    telefone:document.getElementById('telefone').value.trim(), desde:TODAY_ISO
+  });
+  DB.users.set(users);
+  localStorage.setItem('qs.lembrar', f.email.value.trim().toLowerCase());
+
+  flash('success','Conta criada com sucesso','Entre com seu e-mail institucional e a senha cadastrada.');
+  location.href = 'login.html';
+});
+</script>
+</body>
+</html>

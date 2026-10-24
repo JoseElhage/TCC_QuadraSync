@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard · QuadraSync Admin</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%231565C0'/%3E%3Ccircle cx='12' cy='12' r='6.2' fill='none' stroke='white' stroke-width='1.6'/%3E%3Cpath d='M12 5.8v12.4M5.8 12h12.4' stroke='white' stroke-width='1.6'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+<div class="shell">
+  <div id="sidebarHost"></div>
+  <div class="main">
+    <div id="topbarHost"></div>
+
+    <main class="page">
+      <!-- Indicadores -->
+      <section class="stats" id="stats"></section>
+
+      <!-- Banner Etec League -->
+      <section class="league-banner mt-20 fade-up d1">
+        <div class="ico" id="lbIcon"></div>
+        <div class="grow">
+          <div class="flex gap-10 wrap">
+            <h3>Etec League · Temporada 2026</h3>
+            <span class="live"><i></i> Rodada 5 em andamento</span>
+          </div>
+          <p>Os moderadores registram o placar final e organizam o chaveamento. Promova ou remova alunos moderadores quando precisar.</p>
+        </div>
+        <div class="act flex gap-8">
+          <a class="btn btn-warn-soft btn-sm" href="moderadores.html" id="lbMods"></a>
+          <a class="btn btn-sm" style="background:rgba(255,255,255,.14);color:#fff;border-color:rgba(255,255,255,.22)" href="calendario.html" id="lbCal"></a>
+        </div>
+      </section>
+
+      <!-- Fila de aprovação + próximos horários -->
+      <section class="grid-2 mt-20">
+        <div class="card fade-up d2">
+          <div class="card-head">
+            <div class="flex gap-10">
+              <h2>Solicitações pendentes</h2>
+              <span class="badge badge-warn" id="pendBadge"></span>
+            </div>
+            <a class="btn btn-ghost btn-sm" href="reservas.html">Ver todas <span id="chev1"></span></a>
+          </div>
+          <div class="card-body" style="padding:16px">
+            <div class="res-list" id="pendentes"></div>
+          </div>
+        </div>
+
+        <div class="card fade-up d3">
+          <div class="card-head">
+            <h2>Próximos horários</h2>
+            <a class="btn btn-ghost btn-sm" href="calendario.html">Calendário <span id="chev2"></span></a>
+          </div>
+          <div class="upnext" id="proximos"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<div id="toasts"></div>
+
+<script src="../js/data.js"></script>
+<script src="../js/shell.js"></script>
+<script src="../js/actions.js"></script>
+<script>
+const user = mountShell('dashboard', {title:'Dashboard', subtitle:'Visão geral da quadra e das solicitações dos alunos'});
+if(!user) throw new Error('sem sessão');
+
+/* ações rápidas no topo */
+document.getElementById('pageActions').innerHTML =
+  `<button class="btn btn-outline btn-sm" id="actBlock"></button>
+   <a class="btn btn-primary btn-sm" href="reservas.html" id="actRes"></a>`;
+document.getElementById('actBlock').innerHTML = icon('lock','i sm') + ' Bloquear horário';
+document.getElementById('actRes').innerHTML   = icon('clipboard','i sm') + ' Analisar reservas';
+document.getElementById('actBlock').addEventListener('click', ()=>openBlockModal({data:TODAY_ISO, hora:SLOTS[0].start}, render));
+
+document.getElementById('lbIcon').innerHTML = icon('trophy','i lg');
+document.getElementById('lbMods').innerHTML = icon('shield','i sm') + ' Moderadores';
+document.getElementById('lbCal').innerHTML  = icon('calendar','i sm') + ' Calendário';
+['chev1','chev2'].forEach(id => document.getElementById(id).innerHTML = icon('chevR','i sm'));
+
+/* ---------------- Render ---------------- */
+function render(){
+  const res = DB.res.get();
+  const pendentes = res.filter(r=>r.status==='pendente').sort((a,b)=>a.data.localeCompare(b.data)||a.hora.localeCompare(b.hora));
+  const confirmadas7 = res.filter(r=>r.status==='confirmada' && r.data>=TODAY_ISO && r.data<=addDays(TODAY_ISO,7));
+  const bloqueados = DB.blocks.get().filter(b=>b.data>=TODAY_ISO && b.data<=addDays(TODAY_ISO,14));
+  const mods = DB.mods.get();
+
+  /* indicadores */
+  const cards = [
+    {v:pendentes.length,    l:'Reservas pendentes',    ico:'clipboard',    tone:'ico-amber',  trend:pendentes.length?'aguardando decisão':'fila zerada', tcolor:'badge-warn'},
+    {v:confirmadas7.length, l:'Confirmadas em 7 dias', ico:'check-circle', tone:'ico-green',  trend:'próximos dias',       tcolor:'badge-ok'},
+    {v:bloqueados.length,   l:'Bloqueios ativos',      ico:'lock',         tone:'ico-red',    trend:'próximas 2 semanas',  tcolor:'badge-danger'},
+    {v:mods.length,         l:'Moderadores ativos',    ico:'shield',       tone:'ico-purple', trend:'Etec League',         tcolor:'badge-purple'}
+  ];
+  document.getElementById('stats').innerHTML = cards.map((c,i)=>`
+    <div class="stat fade-up d${i+1}">
+      <div class="ico ${c.tone}">${icon(c.ico,'i lg')}</div>
+      <div class="v mono">${c.v}</div>
+      <div class="l">${c.l}</div>
+      <span class="trend badge ${c.tcolor}">${c.trend}</span>
+    </div>`).join('');
+
+  /* fila de pendentes */
+  document.getElementById('pendBadge').innerHTML = `<span class="dot"></span>${pendentes.length} na fila`;
+  const host = document.getElementById('pendentes');
+  host.innerHTML = pendentes.length
+    ? pendentes.slice(0,4).map(r=>resCard(r,{compact:true})).join('')
+    : `<div class="empty"><div class="ico">${icon('check-circle')}</div><h3>Nenhuma solicitação pendente</h3>
+       <p>Todos os pedidos de reserva foram analisados. Novas solicitações aparecem aqui automaticamente.</p></div>`;
+
+  /* próximos horários confirmados */
+  const prox = res.filter(r=>r.status==='confirmada' && r.data>=TODAY_ISO)
+    .sort((a,b)=>a.data.localeCompare(b.data)||a.hora.localeCompare(b.hora)).slice(0,5);
+  document.getElementById('proximos').innerHTML = prox.length ? prox.map(r=>{
+    const d = parseISO(r.data), sp = SPORTS[r.esporte]||SPORTS.geral;
+    return `<div class="up-item">
+      <div class="h mono">${r.hora}</div>
+      <div class="grow" style="min-width:0">
+        <div class="n truncate">${esc(r.aluno)} <span class="muted semi" style="font-weight:500">· ${sp.label}</span></div>
+        <div class="d truncate">${r.data===TODAY_ISO?'Hoje':(r.data===addDays(TODAY_ISO,1)?'Amanhã':DOWS_SHORT[d.getDay()]+' · '+fmtDate(r.data))} — ${esc(r.motivo)}</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" data-detail="${r.id}">Detalhes</button>
+    </div>`;
+  }).join('') : `<div class="empty"><div class="ico">${icon('calendar')}</div><h3>Sem reservas confirmadas</h3><p>Aprove uma solicitação para ver os próximos horários aqui.</p></div>`;
+
+  document.querySelectorAll('[data-detail]').forEach(b=>b.addEventListener('click',()=>openDetailsModal(b.dataset.detail)));
+}
+
+render();
+bindResActions(document.getElementById('pendentes'), render);
+</script>
+</body>
+</html>

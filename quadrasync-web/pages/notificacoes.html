@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Notificações · QuadraSync Admin</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%231565C0'/%3E%3Ccircle cx='12' cy='12' r='6.2' fill='none' stroke='white' stroke-width='1.6'/%3E%3Cpath d='M12 5.8v12.4M5.8 12h12.4' stroke='white' stroke-width='1.6'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+<div class="shell">
+  <div id="sidebarHost"></div>
+  <div class="main">
+    <div id="topbarHost"></div>
+
+    <main class="page page-narrow">
+      <div class="page-head page-head-row">
+        <div>
+          <h2>Notificações</h2>
+          <p>Tudo o que aconteceu na quadra: novos pedidos, aprovações, bloqueios e mudanças na equipe de moderação.</p>
+        </div>
+        <div class="flex gap-8 wrap">
+          <button class="btn btn-outline btn-sm" id="btnReadAll"></button>
+          <button class="btn btn-danger-outline btn-sm" id="btnClear"></button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head" style="flex-wrap:wrap;gap:12px">
+          <div class="tabs" id="tabs"></div>
+          <span class="badge badge-info" id="unreadBadge"></span>
+        </div>
+        <div class="notif-list" id="list"></div>
+        <div class="card-foot between" id="foot"></div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<div id="toasts"></div>
+
+<script src="../js/data.js"></script>
+<script src="../js/shell.js"></script>
+<script src="../js/actions.js"></script>
+<script>
+const user = mountShell('notificacoes', {title:'Notificações', subtitle:'Avisos de reservas, bloqueios e moderadores'});
+if(!user) throw new Error('sem sessão');
+
+document.getElementById('btnReadAll').innerHTML = icon('check','i sm') + ' Marcar todas como lidas';
+document.getElementById('btnClear').innerHTML   = icon('trash','i sm') + ' Limpar lidas';
+
+const TIPOS = {
+  reserva:   {label:'Reservas',    ico:'clipboard', tone:'ico-amber'},
+  bloqueio:  {label:'Bloqueios',   ico:'lock',      tone:'ico-red'},
+  moderador: {label:'Moderadores', ico:'shield',    tone:'ico-purple'},
+  sistema:   {label:'Sistema',     ico:'info',      tone:'ico-blue'}
+};
+const FILTERS = [{id:'todas',label:'Todas'},{id:'nao-lidas',label:'Não lidas'},...Object.entries(TIPOS).map(([k,v])=>({id:k,label:v.label}))];
+let filtro = 'todas';
+
+function renderTabs(){
+  const all = DB.notifs.get();
+  const count = f => f==='todas' ? all.length : f==='nao-lidas' ? all.filter(n=>!n.lido).length : all.filter(n=>n.tipo===f).length;
+  document.getElementById('tabs').innerHTML = FILTERS.map(f =>
+    `<button class="chip ${filtro===f.id?'active':''}" data-f="${f.id}">${f.label} <span class="count">${count(f.id)}</span></button>`).join('');
+  document.querySelectorAll('[data-f]').forEach(b=>b.addEventListener('click',()=>{ filtro=b.dataset.f; render(); }));
+}
+
+function render(){
+  renderTabs();
+  let list = DB.notifs.get();
+  if(filtro==='nao-lidas') list = list.filter(n=>!n.lido);
+  else if(filtro!=='todas') list = list.filter(n=>n.tipo===filtro);
+
+  const unread = DB.notifs.get().filter(n=>!n.lido).length;
+  document.getElementById('unreadBadge').innerHTML = unread ? `<span class="dot"></span>${unread} não lida${unread>1?'s':''}` : `${icon('check','i sm')} Tudo lido`;
+
+  const host = document.getElementById('list');
+  host.innerHTML = list.length ? list.map(n=>{
+    const t = TIPOS[n.tipo] || TIPOS.sistema;
+    return `<article class="notif ${n.lido?'':'unread'}" data-id="${n.id}">
+      <span class="ico ${t.tone}">${icon(t.ico,'i')}</span>
+      <div class="grow" style="min-width:0">
+        <div class="t">${esc(n.titulo)}</div>
+        <div class="d">${esc(n.texto)}</div>
+        <div class="time">${icon('clock','i sm')} ${timeAgo(n.at)} · ${t.label}</div>
+      </div>
+      <div class="acts">
+        ${n.ref && n.ref.startsWith('r-') ? `<button class="btn btn-soft btn-sm" data-open="${n.ref}">Ver reserva</button>` : ''}
+        <button class="mini-btn" data-toggle="${n.id}" title="${n.lido?'Marcar como não lida':'Marcar como lida'}">${icon(n.lido?'eye-off':'check','i')}</button>
+        <button class="mini-btn danger" data-del="${n.id}" title="Excluir">${icon('trash','i')}</button>
+      </div>
+    </article>`;
+  }).join('') : `<div class="empty"><div class="ico">${icon('bell')}</div>
+      <h3>Nenhuma notificação aqui</h3>
+      <p>Quando houver movimentação na quadra, os avisos aparecem nesta lista.</p></div>`;
+
+  document.getElementById('foot').innerHTML = `
+    <span class="small muted">${list.length} de ${DB.notifs.get().length} notificações</span>
+    <span class="small muted">Avisos por e-mail: <strong style="color:${DB.prefs.get().emailReservas?'var(--ok)':'var(--text-3)'}">${DB.prefs.get().emailReservas?'ativados':'desativados'}</strong></span>`;
+
+  host.querySelectorAll('[data-toggle]').forEach(b=>b.addEventListener('click', e=>{
+    e.stopPropagation();
+    const all = DB.notifs.get(); const n = all.find(x=>x.id===b.dataset.toggle);
+    n.lido = !n.lido; DB.notifs.set(all); render(); refreshBadges();
+  }));
+  host.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click', ()=>{
+    DB.notifs.set(DB.notifs.get().filter(x=>x.id!==b.dataset.del));
+    toast('info','Notificação removida');
+    render(); refreshBadges();
+  }));
+  host.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click', ()=>{
+    if(findRes(b.dataset.open)) openDetailsModal(b.dataset.open);
+    else toast('warn','Reserva indisponível','Este pedido não está mais na base.');
+  }));
+  host.querySelectorAll('.notif').forEach(el=>el.addEventListener('click', ()=>{
+    const all = DB.notifs.get();
+    const n = all.find(x=>x.id===el.dataset.id);
+    if(n && !n.lido){ n.lido = true; DB.notifs.set(all); render(); refreshBadges(); }
+  }));
+}
+
+/* atualiza contadores da sidebar/topbar sem recarregar */
+function refreshBadges(){
+  const n = unreadCount();
+  const link = document.querySelector('.side-link[href="notificacoes.html"]');
+  if(link){
+    let pill = link.querySelector('.pill');
+    if(n){ if(!pill){ pill = document.createElement('span'); pill.className='pill'; link.appendChild(pill); } pill.textContent = n; }
+    else pill?.remove();
+  }
+  const bell = document.querySelector('a.icon-btn[href="notificacoes.html"]');
+  if(bell){
+    let dot = bell.querySelector('.ndot');
+    if(n){ if(!dot){ dot = document.createElement('span'); dot.className='ndot'; bell.appendChild(dot); } dot.textContent = n>9?'9+':n; }
+    else dot?.remove();
+  }
+}
+
+document.getElementById('btnReadAll').addEventListener('click', ()=>{
+  const all = DB.notifs.get();
+  if(!all.some(n=>!n.lido)){ toast('info','Nada para marcar','Todas as notificações já foram lidas.'); return; }
+  all.forEach(n=>n.lido=true); DB.notifs.set(all);
+  toast('success','Notificações lidas','Todas foram marcadas como lidas.');
+  render(); refreshBadges();
+});
+
+document.getElementById('btnClear').addEventListener('click', ()=>{
+  const lidas = DB.notifs.get().filter(n=>n.lido);
+  if(!lidas.length){ toast('info','Nada para limpar','Não há notificações lidas na lista.'); return; }
+  Modal.confirm({
+    title:`Excluir ${lidas.length} notificações lidas`, icon:'trash', tone:'ico-red', danger:true,
+    message:'<p class="small muted-2">As notificações lidas serão removidas permanentemente deste painel. As não lidas continuam na lista.</p>',
+    confirmText:'Excluir lidas'
+  }).then(ok=>{
+    if(!ok) return;
+    DB.notifs.set(DB.notifs.get().filter(n=>!n.lido));
+    toast('success','Lista limpa', `${lidas.length} notificações removidas.`);
+    render(); refreshBadges();
+  });
+});
+
+render();
+</script>
+</body>
+</html>

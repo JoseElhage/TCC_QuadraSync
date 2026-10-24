@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Entrar · QuadraSync Admin</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%231565C0'/%3E%3Ccircle cx='12' cy='12' r='6.2' fill='none' stroke='white' stroke-width='1.6'/%3E%3Cpath d='M12 5.8v12.4M5.8 12h12.4' stroke='white' stroke-width='1.6'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body class="auth-body">
+
+<div class="auth">
+  <!-- Painel institucional -->
+  <section class="auth-panel">
+    <div class="auth-brand">
+      <div class="mark" id="brandMark"></div>
+      <div><strong>QuadraSync</strong><span>Painel administrativo</span></div>
+    </div>
+
+    <div class="auth-hero">
+      <h1>A quadra da escola, organizada pela secretaria.</h1>
+      <p>Aprove reservas dos alunos, bloqueie horários e gerencie os moderadores da Etec League — tudo em um único painel.</p>
+
+      <ul class="auth-features">
+        <li><span class="fi" data-icon="check-circle"></span> Aprovação e recusa de reservas em segundos</li>
+        <li><span class="fi" data-icon="calendar"></span> Calendário com bloqueio por horário e motivo</li>
+        <li><span class="fi" data-icon="shield"></span> Promoção e remoção de alunos moderadores</li>
+        <li><span class="fi" data-icon="trophy"></span> Apoio ao torneio interno Etec League</li>
+      </ul>
+
+      <svg class="court-illo" viewBox="0 0 320 180" fill="none" aria-hidden="true">
+        <rect x="6" y="10" width="308" height="160" rx="10" stroke="rgba(255,255,255,.35)" stroke-width="2"/>
+        <rect x="26" y="26" width="268" height="128" rx="4" stroke="rgba(255,255,255,.5)" stroke-width="2"/>
+        <path d="M160 26v128" stroke="rgba(255,255,255,.5)" stroke-width="2"/>
+        <circle cx="160" cy="90" r="26" stroke="rgba(255,255,255,.5)" stroke-width="2"/>
+        <circle cx="160" cy="90" r="3" fill="#FCD34D"/>
+        <rect x="26" y="60" width="34" height="60" stroke="rgba(255,255,255,.35)" stroke-width="2"/>
+        <rect x="260" y="60" width="34" height="60" stroke="rgba(255,255,255,.35)" stroke-width="2"/>
+        <circle cx="160" cy="90" r="46" stroke="rgba(252,211,77,.45)" stroke-width="1.5" stroke-dasharray="4 6"/>
+      </svg>
+    </div>
+
+    <div class="auth-foot"><span data-icon="school" data-size="sm"></span> Etec · Secretaria Acadêmica — acesso restrito a funcionários autorizados.</div>
+  </section>
+
+  <!-- Formulário -->
+  <section class="auth-form-side">
+    <div class="auth-card fade-up">
+      <span class="kicker"><span data-icon="lock" data-size="sm"></span> Acesso restrito</span>
+      <h2>Bem-vindo de volta</h2>
+      <p class="lead">Acesse com sua conta funcional da secretaria para gerenciar a quadra.</p>
+
+      <form class="mt-24" id="formLogin" novalidate>
+        <div class="field">
+          <label class="label" for="email">E-mail institucional <span class="req">*</span></label>
+          <div class="input-icon">
+            <span data-icon="mail"></span>
+            <input class="input" type="email" id="email" name="email" placeholder="nome.sobrenome@etec.sp.gov.br" autocomplete="username" required>
+          </div>
+          <div class="field-error"></div>
+        </div>
+
+        <div class="field">
+          <label class="label" for="senha">Senha <span class="req">*</span></label>
+          <div class="input-icon">
+            <span data-icon="lock"></span>
+            <input class="input" type="password" id="senha" name="senha" placeholder="••••••••" autocomplete="current-password" required>
+            <button type="button" class="toggle-pass" id="togglePass" aria-label="Mostrar senha" data-icon="eye"></button>
+          </div>
+          <div class="field-error"></div>
+        </div>
+
+        <div class="between mb-20" style="gap:10px">
+          <label class="check"><input type="checkbox" id="lembrar"> Manter conectado</label>
+          <a href="#" id="linkForgot" class="small semi">Esqueci minha senha</a>
+        </div>
+
+        <button class="btn btn-primary btn-lg btn-block" type="submit" id="btnEntrar">
+          <span data-icon="logout"></span> Entrar no painel
+        </button>
+      </form>
+
+      <div class="demo-box">
+        <div class="t"><span data-icon="info" data-size="sm"></span> Credenciais de demonstração</div>
+        <div class="flex between wrap gap-8 mt-8">
+          <div class="col gap-4">
+            <span class="small muted">E-mail <code>claudia.ferreira@etec.sp.gov.br</code></span>
+            <span class="small muted">Senha <code>quadra123</code></span>
+          </div>
+          <button class="btn btn-soft btn-sm" type="button" id="btnDemo">Preencher</button>
+        </div>
+      </div>
+
+      <p class="auth-alt">Ainda não tem acesso? <a href="cadastro.html">Solicitar cadastro de administrador</a></p>
+    </div>
+  </section>
+</div>
+
+<div id="toasts"></div>
+
+<script src="../js/data.js"></script>
+<script src="../js/shell.js"></script>
+<script>
+/* ícones declarativos */
+function paintIcons(scope=document){
+  scope.querySelectorAll('[data-icon]').forEach(el=>{
+    const size = el.dataset.size === 'sm' ? 'i sm' : (el.dataset.size === 'lg' ? 'i lg' : 'i');
+    const svg = icon(el.dataset.icon, size);
+    if(el.tagName === 'SPAN' && el.closest('.input-icon') && !el.classList.contains('fi')) el.outerHTML = svg;
+    else el.innerHTML = svg;
+  });
+}
+paintIcons();
+document.getElementById('brandMark').innerHTML = icon('ball','i lg');
+
+/* já autenticado? vai direto pro painel */
+if(getSession()) location.replace('index.html');
+
+/* lembrar e-mail */
+const savedEmail = localStorage.getItem('qs.lembrar');
+if(savedEmail){ document.getElementById('email').value = savedEmail; document.getElementById('lembrar').checked = true; }
+
+/* mostrar/ocultar senha */
+const senhaEl = document.getElementById('senha');
+document.getElementById('togglePass').addEventListener('click', () => {
+  const showing = senhaEl.type === 'text';
+  senhaEl.type = showing ? 'password' : 'text';
+  document.getElementById('togglePass').innerHTML = icon(showing ? 'eye' : 'eye-off');
+  document.getElementById('togglePass').setAttribute('aria-label', showing ? 'Mostrar senha' : 'Ocultar senha');
+});
+
+document.getElementById('linkForgot').addEventListener('click', e => {
+  e.preventDefault();
+  Modal.open({
+    title:'Recuperar acesso', subtitle:'Fluxo de demonstração', icon:'mail', tone:'ico-blue',
+    body:`<p class="small muted-2">No sistema real, enviaremos um link de redefinição para o e-mail institucional cadastrado pela secretaria.</p>
+      <div class="demo-box mt-16"><div class="t" style="color:var(--text-3)">${icon('info','i sm')} Dica</div>
+      <p class="small muted mt-8">Procure a coordenação da Etec para redefinir a senha do painel administrativo.</p></div>`,
+    footer:`<button class="btn btn-primary" data-close>Entendi</button>`
+  });
+});
+
+/* login */
+const form = document.getElementById('formLogin');
+bindLiveValidation(form);
+form.addEventListener('submit', async e => {
+  e.preventDefault();
+  const email = document.getElementById('email');
+  const senha = document.getElementById('senha');
+  let ok = true;
+
+  if(!isEmail(email.value)){ setInvalid(email,'Informe um e-mail institucional válido.'); ok = false; }
+  if(senha.value.length < 6){ setInvalid(senha,'A senha deve ter ao menos 6 caracteres.'); ok = false; }
+  if(!ok){ toast('error','Verifique os campos','Há informações incorretas no formulário.'); return; }
+
+  await busy(document.getElementById('btnEntrar'), 900);
+
+  const user = DB.users.get().find(u => u.email.toLowerCase() === email.value.trim().toLowerCase() && u.senha === senha.value);
+  if(!user){
+    setInvalid(senha,'E-mail ou senha incorretos.');
+    toast('error','Não foi possível entrar','Credenciais não encontradas. Use o acesso de demonstração.');
+    return;
+  }
+
+  if(document.getElementById('lembrar').checked) localStorage.setItem('qs.lembrar', user.email);
+  else localStorage.removeItem('qs.lembrar');
+
+  setSession({id:user.id, nome:user.nome, email:user.email, setor:user.setor, cargo:user.cargo, matricula:user.matricula});
+  flash('success', `Olá, ${user.nome.split(' ')[0]}!`, 'Você entrou no painel administrativo.');
+  location.href = 'index.html';
+});
+
+/* preencher demo */
+document.getElementById('btnDemo').addEventListener('click', () => {
+  document.getElementById('email').value = 'claudia.ferreira@etec.sp.gov.br';
+  document.getElementById('senha').value = 'quadra123';
+  clearInvalid(document.getElementById('email')); clearInvalid(document.getElementById('senha'));
+  toast('info','Credenciais preenchidas','Clique em “Entrar no painel” para continuar.');
+});
+</script>
+</body>
+</html>
