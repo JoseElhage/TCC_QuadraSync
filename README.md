@@ -84,6 +84,12 @@ QuadraSync/
 │   ├── config/            # Configurações do frontend
 │   └── telas/             # Telas da aplicação
 │
+├── quadrasync-web/        # Painel administrativo web
+│   ├── css/               # Folhas de estilo da interface web
+│   ├── js/                # Scripts e lógica da aplicação web
+│   ├── pages/             # Páginas da aplicação web
+│   └── index.html         # Ponto de entrada da aplicação web
+│
 ├── AI_RULES.md.txt        # Regras e orientações para uso de IA no projeto
 ├── README.md              # Documentação principal do projeto
 └── LICENSE                # Licença de uso do projeto
