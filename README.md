@@ -46,6 +46,8 @@ Este projeto é o **Trabalho de Conclusão de Curso (TCC)** da turma **3°DS-A**
 <div align="center">
 
 ![React Native](https://img.shields.io/badge/React%20Native-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
+![HTML](https://img.shields.io/badge/HTML5-E34F26?style=flat&logo=html5&logoColor=white)
+![CSS](https://img.shields.io/badge/-CSS-1572B6?style=flat-square&logo=css&logoColor=white)
 ![Expo](https://img.shields.io/badge/Expo-000020?style=for-the-badge&logo=expo&logoColor=white)
 ![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=node.js&logoColor=white)
 ![MySQL](https://img.shields.io/badge/MySQL-4479A1?style=for-the-badge&logo=mysql&logoColor=white)
@@ -54,7 +56,9 @@ Este projeto é o **Trabalho de Conclusão de Curso (TCC)** da turma **3°DS-A**
 </div>
 
 - **Frontend Mobile:** React Native (Expo)
-- **Backend:** Node.js
+- **Backend:** Node.js + MySQL
+- **Frontend Web:** HTML + CSS
+- **Versionamento:** GitHub
 - **Geração de documentação:** Node.js + biblioteca `docx`
 - **Padrão de documentação acadêmica:** ABNT
 
